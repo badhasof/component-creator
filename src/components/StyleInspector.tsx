@@ -7,6 +7,7 @@ interface StyleInspectorProps {
 
 export function StyleInspector({ element }: StyleInspectorProps) {
   const [activeTab, setActiveTab] = useState<'styling' | 'html' | 'code'>('styling');
+  const [codeViewTab, setCodeViewTab] = useState<'code' | 'preview'>('code');
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string>('');
@@ -252,16 +253,50 @@ Generate the complete React component:
                   alignItems: 'center',
                   marginBottom: '8px',
                 }}>
-                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280' }}>
-                    Generated Component:
-                  </span>
+                  {/* Code/Preview Toggle Tabs */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => setCodeViewTab('code')}
+                      style={{
+                        padding: '4px 12px',
+                        background: codeViewTab === 'code' ? '#3b82f6' : '#e5e7eb',
+                        color: codeViewTab === 'code' ? 'white' : '#6b7280',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      Code
+                    </button>
+                    <button
+                      onClick={() => setCodeViewTab('preview')}
+                      style={{
+                        padding: '4px 12px',
+                        background: codeViewTab === 'preview' ? '#3b82f6' : '#e5e7eb',
+                        color: codeViewTab === 'preview' ? 'white' : '#6b7280',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      Preview
+                    </button>
+                  </div>
+
+                  {/* Copy Button */}
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(generatedCode);
                     }}
                     style={{
                       padding: '4px 8px',
-                      background: '#3b82f6',
+                      background: '#10b981',
                       color: 'white',
                       border: 'none',
                       borderRadius: '4px',
@@ -272,20 +307,68 @@ Generate the complete React component:
                     Copy
                   </button>
                 </div>
-                <pre style={{
-                  background: '#1f2937',
-                  padding: '12px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  overflowX: 'auto',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-all',
-                  color: '#e5e7eb',
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                }}>
-                  <code>{generatedCode}</code>
-                </pre>
+
+                {/* Code View */}
+                {codeViewTab === 'code' && (
+                  <pre style={{
+                    background: '#1f2937',
+                    padding: '12px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    overflowX: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    color: '#e5e7eb',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                  }}>
+                    <code>{generatedCode}</code>
+                  </pre>
+                )}
+
+                {/* Preview View */}
+                {codeViewTab === 'preview' && (
+                  <div style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    padding: '16px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                  }}>
+                    <iframe
+                      ref={(iframe) => {
+                        if (iframe && generatedCode) {
+                          console.log('Setting up iframe for preview');
+                          // Wait for sandbox to be ready
+                          const handleMessage = (event: MessageEvent) => {
+                            console.log('Received message in parent:', event.data);
+                            if (event.data.type === 'SANDBOX_READY' && iframe.contentWindow) {
+                              console.log('Sandbox ready, sending code to render');
+                              // Send code to sandbox
+                              iframe.contentWindow.postMessage({
+                                type: 'RENDER_COMPONENT',
+                                code: generatedCode
+                              }, '*');
+                              window.removeEventListener('message', handleMessage);
+                            }
+                          };
+                          window.addEventListener('message', handleMessage);
+                        }
+                      }}
+                      src={chrome.runtime.getURL('sandbox.html')}
+                      style={{
+                        width: '100%',
+                        height: '250px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        background: 'white',
+                      }}
+                      sandbox="allow-scripts"
+                      title="Component Preview"
+                    />
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{

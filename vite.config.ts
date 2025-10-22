@@ -19,7 +19,8 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        content: 'src/content.tsx'
+        content: 'src/content.tsx',
+        sandbox: 'sandbox.html'
       }
     }
   }

@@ -10,6 +10,24 @@
       "js": ["src/content.tsx"]
     }
   ],
+  "content_security_policy": {
+    "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com"
+  },
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "sandbox.html",
+        "vendor/react.production.min.js",
+        "vendor/react-dom.production.min.js",
+        "vendor/babel.min.js",
+        "vendor/tailwind.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "commands": {
     "toggle-highlight": {
       "suggested_key": {
