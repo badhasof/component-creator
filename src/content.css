@@ -1,0 +1,65 @@
+/* Component Creator Extension Styles */
+
+.cc-highlight-outline {
+  outline: 3px solid #3b82f6 !important;
+  outline-offset: -3px !important;
+  position: relative !important;
+  z-index: 2147483646 !important;
+}
+
+.cc-tooltip {
+  position: fixed !important;
+  background: #1f2937 !important;
+  color: #f9fafb !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.cc-mode-indicator {
+  position: fixed !important;
+  top: 16px !important;
+  right: 16px !important;
+  background: #3b82f6 !important;
+  color: white !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  z-index: 2147483647 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+  animation: cc-slideIn 0.3s ease-out !important;
+}
+
+.cc-modal-content {
+  background: white !important;
+  border-radius: 8px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  padding: 0 !important;
+  max-width: 600px !important;
+  max-height: 500px !important;
+  overflow: hidden !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.cc-modal-backdrop {
+  cursor: pointer !important;
+}
+
+@keyframes cc-slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
