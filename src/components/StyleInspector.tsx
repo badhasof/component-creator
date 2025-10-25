@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface StyleInspectorProps {
@@ -6,9 +6,11 @@ interface StyleInspectorProps {
 }
 
 export function StyleInspector({ element }: StyleInspectorProps) {
-  const [activeTab, setActiveTab] = useState<'styling' | 'html' | 'code'>('styling');
+  const [activeTab, setActiveTab] = useState<'styling' | 'html' | 'react' | 'code'>('styling');
   const [codeViewTab, setCodeViewTab] = useState<'code' | 'preview'>('code');
+  const [reactViewTab, setReactViewTab] = useState<'code' | 'preview'>('code');
   const [generatedCode, setGeneratedCode] = useState<string>('');
+  const [reactCode, setReactCode] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-2.5-flash-lite'>('gemini-2.5-flash');
@@ -29,6 +31,200 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
   const allStyles = getAllStyles();
   const htmlCode = element.outerHTML;
+
+  // Convert HTML to React/JSX
+  const convertHtmlToReact = (sourceElement: HTMLElement): string => {
+    // Recursively process element and its children
+    const processElement = (el: HTMLElement): string => {
+      const tagName = el.tagName.toLowerCase();
+      const computedStyle = window.getComputedStyle(el);
+
+      // Extract important style properties
+      const inlineStyles: Record<string, string> = {};
+
+      // SVG-specific attributes
+      const isSvgElement = el instanceof SVGElement;
+      if (isSvgElement) {
+        // SVG stroke and fill
+        const stroke = el.getAttribute('stroke') || computedStyle.stroke;
+        if (stroke && stroke !== 'none') inlineStyles.stroke = stroke;
+
+        const fill = el.getAttribute('fill') || computedStyle.fill;
+        if (fill && fill !== 'none') inlineStyles.fill = fill;
+
+        const strokeWidth = el.getAttribute('stroke-width') || computedStyle.strokeWidth;
+        if (strokeWidth && strokeWidth !== '0' && strokeWidth !== 'none') {
+          inlineStyles.strokeWidth = strokeWidth;
+        }
+
+        const strokeLinecap = el.getAttribute('stroke-linecap') || computedStyle.strokeLinecap;
+        if (strokeLinecap && strokeLinecap !== 'butt') {
+          inlineStyles.strokeLinecap = strokeLinecap;
+        }
+
+        const strokeLinejoin = el.getAttribute('stroke-linejoin') || computedStyle.strokeLinejoin;
+        if (strokeLinejoin && strokeLinejoin !== 'miter') {
+          inlineStyles.strokeLinejoin = strokeLinejoin;
+        }
+      }
+
+      // Colors
+      if (computedStyle.color && computedStyle.color !== 'rgb(0, 0, 0)') {
+        inlineStyles.color = computedStyle.color;
+      }
+      if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+        inlineStyles.backgroundColor = computedStyle.backgroundColor;
+      }
+
+      // Typography
+      if (computedStyle.fontSize) inlineStyles.fontSize = computedStyle.fontSize;
+      if (computedStyle.fontWeight && computedStyle.fontWeight !== '400') {
+        inlineStyles.fontWeight = computedStyle.fontWeight;
+      }
+      if (computedStyle.fontFamily) inlineStyles.fontFamily = computedStyle.fontFamily;
+      if (computedStyle.lineHeight && computedStyle.lineHeight !== 'normal') {
+        inlineStyles.lineHeight = computedStyle.lineHeight;
+      }
+      if (computedStyle.letterSpacing && computedStyle.letterSpacing !== 'normal') {
+        inlineStyles.letterSpacing = computedStyle.letterSpacing;
+      }
+
+      // Layout
+      if (computedStyle.display && computedStyle.display !== 'inline') {
+        inlineStyles.display = computedStyle.display;
+      }
+      if (computedStyle.flexDirection && computedStyle.flexDirection !== 'row') {
+        inlineStyles.flexDirection = computedStyle.flexDirection;
+      }
+      if (computedStyle.alignItems && computedStyle.alignItems !== 'normal') {
+        inlineStyles.alignItems = computedStyle.alignItems;
+      }
+      if (computedStyle.justifyContent && computedStyle.justifyContent !== 'normal') {
+        inlineStyles.justifyContent = computedStyle.justifyContent;
+      }
+      if (computedStyle.gap && computedStyle.gap !== 'normal' && computedStyle.gap !== '0px') {
+        inlineStyles.gap = computedStyle.gap;
+      }
+
+      // Spacing
+      const padding = computedStyle.padding;
+      if (padding && padding !== '0px') inlineStyles.padding = padding;
+      const margin = computedStyle.margin;
+      if (margin && margin !== '0px') inlineStyles.margin = margin;
+
+      // Borders
+      if (computedStyle.borderWidth && computedStyle.borderWidth !== '0px') {
+        inlineStyles.borderWidth = computedStyle.borderWidth;
+        if (computedStyle.borderStyle) inlineStyles.borderStyle = computedStyle.borderStyle;
+        if (computedStyle.borderColor) inlineStyles.borderColor = computedStyle.borderColor;
+      }
+      if (computedStyle.borderRadius && computedStyle.borderRadius !== '0px') {
+        inlineStyles.borderRadius = computedStyle.borderRadius;
+      }
+
+      // Dimensions
+      if (computedStyle.width && !computedStyle.width.includes('auto')) {
+        inlineStyles.width = computedStyle.width;
+      }
+      if (computedStyle.height && !computedStyle.height.includes('auto')) {
+        inlineStyles.height = computedStyle.height;
+      }
+      if (computedStyle.minWidth && computedStyle.minWidth !== '0px') {
+        inlineStyles.minWidth = computedStyle.minWidth;
+      }
+      if (computedStyle.minHeight && computedStyle.minHeight !== '0px') {
+        inlineStyles.minHeight = computedStyle.minHeight;
+      }
+
+      // Position
+      if (computedStyle.position && computedStyle.position !== 'static') {
+        inlineStyles.position = computedStyle.position;
+      }
+
+      // Others
+      if (computedStyle.overflow && computedStyle.overflow !== 'visible') {
+        inlineStyles.overflow = computedStyle.overflow;
+      }
+      if (computedStyle.textAlign && computedStyle.textAlign !== 'start') {
+        inlineStyles.textAlign = computedStyle.textAlign;
+      }
+      if (computedStyle.cursor && computedStyle.cursor !== 'auto') {
+        inlineStyles.cursor = computedStyle.cursor;
+      }
+
+      // Build attributes
+      let attributes = '';
+
+      // Copy existing attributes (except class and style)
+      for (let i = 0; i < el.attributes.length; i++) {
+        const attr = el.attributes[i];
+        if (attr.name === 'class' || attr.name === 'style') continue;
+
+        let attrName = attr.name;
+        // Convert to React attribute names
+        if (attrName === 'for') attrName = 'htmlFor';
+
+        attributes += ` ${attrName}="${attr.value}"`;
+      }
+
+      // Add style attribute if we have inline styles
+      if (Object.keys(inlineStyles).length > 0) {
+        const styleString = JSON.stringify(inlineStyles, null, 2)
+          .replace(/"([^"]+)":/g, '$1:')
+          .replace(/"/g, "'");
+        attributes += ` style={${styleString}}`;
+      }
+
+      // Process children
+      let children = '';
+      if (el.childNodes.length > 0) {
+        el.childNodes.forEach(child => {
+          if (child.nodeType === Node.TEXT_NODE) {
+            const text = child.textContent?.trim();
+            if (text) children += text;
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            children += processElement(child as HTMLElement);
+          }
+        });
+      }
+
+      // Self-closing tags
+      const selfClosingTags = ['img', 'input', 'br', 'hr', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr'];
+      if (selfClosingTags.includes(tagName)) {
+        return `<${tagName}${attributes} />`;
+      }
+
+      return `<${tagName}${attributes}>${children}</${tagName}>`;
+    };
+
+    const jsxContent = processElement(sourceElement);
+
+    // Wrap in component structure
+    const componentName = 'ConvertedComponent';
+    const wrappedCode = `"use client";
+
+import React from 'react';
+
+interface ${componentName}Props {
+  className?: string;
+}
+
+const ${componentName} = ({ className }: ${componentName}Props) => {
+  return (
+    ${jsxContent}
+  );
+};
+
+export default ${componentName};`;
+
+    return wrappedCode;
+  };
+
+  // Auto-generate React code when component mounts or element changes
+  useEffect(() => {
+    const code = convertHtmlToReact(element);
+    setReactCode(code);
+  }, [element]);
 
   // Generate code using Gemini API
   const generateCode = async () => {
@@ -68,20 +264,34 @@ ${Object.entries(allStyles)
 
 ## Requirements - CRITICAL:
 - Create a React functional component with TypeScript
-- Convert styles to Tailwind CSS classes wherever possible
-- For complex styles that can't be represented in Tailwind, use inline styles
+- **PRIORITIZE Tailwind CSS over inline styles** - use the closest Tailwind equivalent for every style
+- Only use inline styles for truly unique values that cannot be represented with Tailwind utilities
 - Use modern React best practices
 - Make text content and dynamic values into props (but keep default values identical to original)
 - Include proper TypeScript interfaces for all props
 - Add 'use client' directive if the component uses hooks or event handlers
 
+## Tailwind Styling Rules - VERY IMPORTANT:
+- **Use Tailwind classes for ALL styling whenever possible** - this is your PRIMARY goal
+- For dimensions, colors, spacing, typography: ALWAYS use the closest Tailwind utility (e.g., \`w-48\` instead of \`width: "196px"\`)
+- For layout properties (flex, grid, positioning): ALWAYS use Tailwind classes (e.g., \`flex items-center justify-center\`)
+- For borders, shadows, opacity: ALWAYS use Tailwind utilities
+- **DO NOT dump all computed styles as inline styles** - this creates bloated, unmaintainable code
+- Only add inline styles for:
+  1. Very specific pixel values that are critical to preserve exactly
+  2. Complex gradients or transforms that don't have Tailwind equivalents
+  3. CSS variables that are part of a design system
+- When you see standard values like padding/margin/width/height, use Tailwind's spacing scale (e.g., \`p-4\`, \`m-2\`, \`w-24\`)
+- For colors, use Tailwind's color palette or the closest equivalent
+- **Remember: Clean, maintainable Tailwind code is better than pixel-perfect inline bloat**
+
 ## Code Quality Requirements:
 - Only use valid Tailwind utility classes (check Tailwind documentation)
-- For custom utility classes, define them in the tailwind.config.ts comment
+- For custom CSS variables or unique values, add them as comments at the top noting they should be in tailwind.config
 - For SVGs, always include explicit stroke and fill colors (e.g., stroke="currentColor" or stroke="#100D0D")
 - Never use invalid Tailwind classes like "justify-left" - use "justify-start" or "justify-center" instead
 - Ensure all Tailwind breakpoint prefixes are valid (sm:, md:, lg:, xl:, 2xl:)
-- Add comments for any custom CSS variables or font families used
+- Add brief comments for any custom CSS variables or font families used
 
 ## Output Format:
 Return ONLY the component code wrapped in a markdown code block with the language specified (tsx, jsx, etc).
@@ -161,6 +371,12 @@ Generate the complete React component:
           HTML
         </button>
         <button
+          onClick={() => setActiveTab('react')}
+          style={activeTab === 'react' ? activeTabStyles : tabStyles}
+        >
+          React
+        </button>
+        <button
           onClick={() => setActiveTab('code')}
           style={activeTab === 'code' ? activeTabStyles : tabStyles}
         >
@@ -213,6 +429,141 @@ Generate the complete React component:
             }}>
               <code>{htmlCode}</code>
             </pre>
+          </div>
+        )}
+
+        {activeTab === 'react' && (
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
+              React Component (Auto-converted)
+            </h3>
+
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px',
+              }}>
+                {/* Code/Preview Toggle Tabs */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setReactViewTab('code')}
+                    style={{
+                      padding: '4px 12px',
+                      background: reactViewTab === 'code' ? '#3b82f6' : '#e5e7eb',
+                      color: reactViewTab === 'code' ? 'white' : '#6b7280',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Code
+                  </button>
+                  <button
+                    onClick={() => setReactViewTab('preview')}
+                    style={{
+                      padding: '4px 12px',
+                      background: reactViewTab === 'preview' ? '#3b82f6' : '#e5e7eb',
+                      color: reactViewTab === 'preview' ? 'white' : '#6b7280',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Preview
+                  </button>
+                </div>
+
+                {/* Copy Button */}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(reactCode);
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+
+              {/* Code View */}
+              {reactViewTab === 'code' && (
+                <pre style={{
+                  background: '#1f2937',
+                  padding: '12px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  overflowX: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  color: '#e5e7eb',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                }}>
+                  <code>{reactCode}</code>
+                </pre>
+              )}
+
+              {/* Preview View */}
+              {reactViewTab === 'preview' && (
+                <div style={{
+                  background: '#f3f4f6',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  padding: '16px',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  overflowX: 'auto',
+                  width: '100%',
+                }}>
+                  <iframe
+                    ref={(iframe) => {
+                      if (iframe && reactCode) {
+                        console.log('Setting up iframe for React preview');
+                        const handleMessage = (event: MessageEvent) => {
+                          console.log('Received message in parent:', event.data);
+                          if (event.data.type === 'SANDBOX_READY' && iframe.contentWindow) {
+                            console.log('Sandbox ready, sending React code to render');
+                            iframe.contentWindow.postMessage({
+                              type: 'RENDER_COMPONENT',
+                              code: reactCode
+                            }, '*');
+                            window.removeEventListener('message', handleMessage);
+                          }
+                        };
+                        window.addEventListener('message', handleMessage);
+                      }
+                    }}
+                    src={chrome.runtime.getURL('sandbox.html')}
+                    style={{
+                      width: '100%',
+                      minWidth: '100%',
+                      height: '250px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      background: 'white',
+                      display: 'block',
+                    }}
+                    sandbox="allow-scripts"
+                    title="React Component Preview"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -387,6 +738,8 @@ Generate the complete React component:
                     padding: '16px',
                     maxHeight: '300px',
                     overflowY: 'auto',
+                    overflowX: 'auto',
+                    width: '100%',
                   }}>
                     <iframe
                       ref={(iframe) => {
@@ -411,10 +764,12 @@ Generate the complete React component:
                       src={chrome.runtime.getURL('sandbox.html')}
                       style={{
                         width: '100%',
+                        minWidth: '100%',
                         height: '250px',
-                        border: '1px solid #d1d5db',
+                        border: 'none',
                         borderRadius: '4px',
                         background: 'white',
+                        display: 'block',
                       }}
                       sandbox="allow-scripts"
                       title="Component Preview"
