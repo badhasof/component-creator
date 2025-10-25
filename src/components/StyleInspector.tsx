@@ -452,8 +452,45 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         if (attr.name === 'class' || attr.name === 'style') continue;
 
         let attrName = attr.name;
+
         // Convert to React attribute names
-        if (attrName === 'for') attrName = 'htmlFor';
+        if (attrName === 'for') {
+          attrName = 'htmlFor';
+        }
+        // Convert SVG attributes to camelCase
+        else if (attrName === 'stroke-width') {
+          attrName = 'strokeWidth';
+        }
+        else if (attrName === 'stroke-linecap') {
+          attrName = 'strokeLinecap';
+        }
+        else if (attrName === 'stroke-linejoin') {
+          attrName = 'strokeLinejoin';
+        }
+        else if (attrName === 'stroke-miterlimit') {
+          attrName = 'strokeMiterlimit';
+        }
+        else if (attrName === 'stroke-dasharray') {
+          attrName = 'strokeDasharray';
+        }
+        else if (attrName === 'stroke-dashoffset') {
+          attrName = 'strokeDashoffset';
+        }
+        else if (attrName === 'fill-opacity') {
+          attrName = 'fillOpacity';
+        }
+        else if (attrName === 'stroke-opacity') {
+          attrName = 'strokeOpacity';
+        }
+        else if (attrName === 'fill-rule') {
+          attrName = 'fillRule';
+        }
+        else if (attrName === 'clip-rule') {
+          attrName = 'clipRule';
+        }
+        else if (attrName === 'clip-path') {
+          attrName = 'clipPath';
+        }
 
         attributes += ` ${attrName}="${attr.value}"`;
       }
