@@ -716,7 +716,42 @@ export function StyleInspector({ element }: StyleInspectorProps) {
           attrName = 'clipPath';
         }
 
-        attributes += ` ${attrName}="${attr.value}"`;
+        // Convert relative URLs to absolute URLs for images and links
+        let attrValue = attr.value;
+        if ((attrName === 'src' || attrName === 'href') && attrValue) {
+          try {
+            // If it's a relative URL, convert to absolute using the page's base URL
+            const absoluteUrl = new URL(attrValue, window.location.href);
+            attrValue = absoluteUrl.href;
+          } catch (e) {
+            // If URL construction fails, keep original value (might be data URL, etc.)
+            attrValue = attr.value;
+          }
+        }
+
+        // Handle srcset attribute (contains multiple URLs)
+        if (attrName === 'srcset' && attrValue) {
+          try {
+            // srcset format: "url1 1x, url2 2x" or "url1 100w, url2 200w"
+            attrValue = attrValue.split(',').map((item: string) => {
+              const parts = item.trim().split(/\s+/);
+              if (parts.length >= 1) {
+                try {
+                  const absoluteUrl = new URL(parts[0], window.location.href);
+                  parts[0] = absoluteUrl.href;
+                } catch {
+                  // Keep original if conversion fails
+                }
+              }
+              return parts.join(' ');
+            }).join(', ');
+          } catch {
+            // Keep original if parsing fails
+            attrValue = attr.value;
+          }
+        }
+
+        attributes += ` ${attrName}="${attrValue}"`;
       }
 
       // Add className attribute if we have Tailwind classes
@@ -729,6 +764,25 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
       // Add style attribute if we have inline styles (for things we couldn't convert to Tailwind)
       if (Object.keys(inlineStyles).length > 0) {
+        // Convert relative URLs in background-image to absolute
+        if (inlineStyles.backgroundImage) {
+          try {
+            inlineStyles.backgroundImage = inlineStyles.backgroundImage.replace(
+              /url\(['"]?([^'"()]+)['"]?\)/g,
+              (match: string, url: string) => {
+                try {
+                  const absoluteUrl = new URL(url, window.location.href);
+                  return `url('${absoluteUrl.href}')`;
+                } catch {
+                  return match;
+                }
+              }
+            );
+          } catch {
+            // Keep original if conversion fails
+          }
+        }
+
         const styleString = JSON.stringify(inlineStyles, null, 2)
           .replace(/"([^"]+)":/g, '$1:')  // Remove quotes from keys
           .replace(/\\'/g, "'")  // Remove escaped single quotes
