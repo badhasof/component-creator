@@ -11,6 +11,7 @@ export function StyleInspector({ element }: StyleInspectorProps) {
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-2.5-flash-lite'>('gemini-2.5-flash');
   const computedStyles = window.getComputedStyle(element);
 
   // Extract all relevant CSS properties
@@ -37,11 +38,11 @@ export function StyleInspector({ element }: StyleInspectorProps) {
     try {
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-exp',
+        model: selectedModel,
       });
 
       const prompt = `
-You are an expert React/Next.js developer. Generate a clean, production-ready React component based on this HTML element.
+You are an expert React/Next.js developer. Your task is to convert this HTML element into a React component while preserving EVERYTHING exactly as it is.
 
 ## HTML Structure:
 \`\`\`html
@@ -55,14 +56,35 @@ ${Object.entries(allStyles)
   .join('\n')}
 \`\`\`
 
-## Requirements:
+## PRIMARY RULE - PRESERVE EVERYTHING:
+**DO NOT CHANGE ANYTHING FROM THE ORIGINAL:**
+- Keep ALL text content exactly as it appears (do not modify, improve, or change any text)
+- Keep ALL class names exactly as they are
+- Keep ALL attribute values exactly as they are
+- Keep ALL image sources exactly as provided
+- Keep ALL data attributes, aria labels, and other attributes unchanged
+- Keep the EXACT structure and hierarchy of elements
+- Your ONLY job is to convert HTML syntax to React/JSX syntax - nothing more
+
+## Requirements - CRITICAL:
 - Create a React functional component with TypeScript
-- Convert the styles to Tailwind CSS classes wherever possible
+- Convert styles to Tailwind CSS classes wherever possible
 - For complex styles that can't be represented in Tailwind, use inline styles
 - Use modern React best practices
-- Make the component reusable with props for dynamic content
-- Include prop types/interface
-- Return ONLY the component code wrapped in a code block
+- Make text content and dynamic values into props (but keep default values identical to original)
+- Include proper TypeScript interfaces for all props
+- Add 'use client' directive if the component uses hooks or event handlers
+
+## Code Quality Requirements:
+- Only use valid Tailwind utility classes (check Tailwind documentation)
+- For custom utility classes, define them in the tailwind.config.ts comment
+- For SVGs, always include explicit stroke and fill colors (e.g., stroke="currentColor" or stroke="#100D0D")
+- Never use invalid Tailwind classes like "justify-left" - use "justify-start" or "justify-center" instead
+- Ensure all Tailwind breakpoint prefixes are valid (sm:, md:, lg:, xl:, 2xl:)
+- Add comments for any custom CSS variables or font families used
+
+## Output Format:
+Return ONLY the component code wrapped in a markdown code block with the language specified (tsx, jsx, etc).
 
 Generate the complete React component:
       `.trim();
@@ -199,6 +221,36 @@ Generate the complete React component:
             <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
               React + Tailwind Code
             </h3>
+
+            {/* Model Selection Dropdown */}
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#374151',
+                display: 'block',
+                marginBottom: '6px'
+              }}>
+                AI Model:
+              </label>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value as 'gemini-2.5-flash' | 'gemini-2.5-flash-lite')}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  color: '#374151',
+                }}
+              >
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
+                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (Faster)</option>
+              </select>
+            </div>
 
             {/* Generate Button */}
             <button

@@ -49,20 +49,20 @@ function getElementInfo(element: HTMLElement): string {
 }
 
 // Create and show modal with StyleInspector
-function showStyleInspector(element: HTMLElement, clickX: number, clickY: number) {
+function showStyleInspector(element: HTMLElement) {
   console.log('showStyleInspector called');
   console.log('Element to inspect:', element);
 
   // Remove existing modal if any
   closeModal();
 
-  // Create modal container
+  // Create modal container - always centered
   modalContainer = document.createElement('div');
   modalContainer.className = 'cc-modal-container';
   modalContainer.style.cssText = `
     position: fixed;
-    left: ${clickX}px;
-    top: ${clickY}px;
+    left: 50%;
+    top: 50%;
     z-index: 2147483646;
     transform: translate(-50%, -50%);
   `;
@@ -210,10 +210,9 @@ function handleClick(event: MouseEvent) {
   event.stopPropagation();
 
   console.log('Element clicked:', target);
-  console.log('Click position:', event.clientX, event.clientY);
 
-  // Show style inspector modal at click position
-  showStyleInspector(target, event.clientX, event.clientY);
+  // Show style inspector modal (centered)
+  showStyleInspector(target);
 }
 
 // Toggle selection mode
@@ -253,10 +252,17 @@ function toggleSelectionMode() {
   }
 }
 
-// Listen for keyboard shortcut
+// Listen for messages from background service worker
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'toggle-selection-mode') {
+    toggleSelectionMode();
+  }
+});
+
+// Also listen for keyboard shortcut as fallback
 document.addEventListener('keydown', (event: KeyboardEvent) => {
   // Cmd+Shift+E on Mac or Ctrl+Shift+E on Windows/Linux
-  if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'E') {
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'e') {
     event.preventDefault();
     toggleSelectionMode();
   }

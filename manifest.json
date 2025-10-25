@@ -3,7 +3,10 @@
   "name": "Component Creator",
   "version": "0.1.0",
   "description": "Highlight elements on hover with keyboard shortcut",
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "tabs"],
+  "background": {
+    "service_worker": "src/background.ts"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
