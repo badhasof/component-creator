@@ -32,14 +32,179 @@ export function StyleInspector({ element }: StyleInspectorProps) {
   const allStyles = getAllStyles();
   const htmlCode = element.outerHTML;
 
-  // Convert HTML to React/JSX
+  // Convert CSS value to Tailwind class
+  const cssToTailwind = (property: string, value: string): string[] => {
+    // Font size mapping
+    if (property === 'fontSize') {
+      const sizeMap: Record<string, string> = {
+        '12px': 'text-xs',
+        '14px': 'text-sm',
+        '16px': 'text-base',
+        '18px': 'text-lg',
+        '20px': 'text-xl',
+        '24px': 'text-2xl',
+        '30px': 'text-3xl',
+        '36px': 'text-4xl',
+        '48px': 'text-5xl',
+        '60px': 'text-6xl',
+        '72px': 'text-7xl',
+      };
+      return [sizeMap[value] || `text-[${value}]`];
+    }
+
+    // Font weight mapping
+    if (property === 'fontWeight') {
+      const weightMap: Record<string, string> = {
+        '100': 'font-thin',
+        '200': 'font-extralight',
+        '300': 'font-light',
+        '400': 'font-normal',
+        '500': 'font-medium',
+        '600': 'font-semibold',
+        '700': 'font-bold',
+        '800': 'font-extrabold',
+        '900': 'font-black',
+      };
+      return [weightMap[value] || `font-[${value}]`];
+    }
+
+    // Display mapping
+    if (property === 'display') {
+      const displayMap: Record<string, string> = {
+        'flex': 'flex',
+        'inline-flex': 'inline-flex',
+        'grid': 'grid',
+        'inline-grid': 'inline-grid',
+        'block': 'block',
+        'inline-block': 'inline-block',
+        'inline': 'inline',
+        'none': 'hidden',
+      };
+      return [displayMap[value] || ''];
+    }
+
+    // Flex direction
+    if (property === 'flexDirection') {
+      const dirMap: Record<string, string> = {
+        'row': 'flex-row',
+        'row-reverse': 'flex-row-reverse',
+        'column': 'flex-col',
+        'column-reverse': 'flex-col-reverse',
+      };
+      return [dirMap[value] || ''];
+    }
+
+    // Align items
+    if (property === 'alignItems') {
+      const alignMap: Record<string, string> = {
+        'flex-start': 'items-start',
+        'center': 'items-center',
+        'flex-end': 'items-end',
+        'stretch': 'items-stretch',
+        'baseline': 'items-baseline',
+      };
+      return [alignMap[value] || ''];
+    }
+
+    // Justify content
+    if (property === 'justifyContent') {
+      const justifyMap: Record<string, string> = {
+        'flex-start': 'justify-start',
+        'center': 'justify-center',
+        'flex-end': 'justify-end',
+        'space-between': 'justify-between',
+        'space-around': 'justify-around',
+        'space-evenly': 'justify-evenly',
+      };
+      return [justifyMap[value] || ''];
+    }
+
+    // Gap (simplified - using arbitrary values)
+    if (property === 'gap' && value !== 'normal' && value !== '0px') {
+      return [`gap-[${value}]`];
+    }
+
+    // Padding/Margin (simplified)
+    if (property === 'padding' && value !== '0px') {
+      return [`p-[${value}]`];
+    }
+    if (property === 'margin' && value !== '0px') {
+      return [`m-[${value}]`];
+    }
+
+    // Border radius
+    if (property === 'borderRadius' && value !== '0px') {
+      const radiusMap: Record<string, string> = {
+        '2px': 'rounded-sm',
+        '4px': 'rounded',
+        '6px': 'rounded-md',
+        '8px': 'rounded-lg',
+        '12px': 'rounded-xl',
+        '16px': 'rounded-2xl',
+        '24px': 'rounded-3xl',
+        '9999px': 'rounded-full',
+      };
+      return [radiusMap[value] || `rounded-[${value}]`];
+    }
+
+    // Text align
+    if (property === 'textAlign') {
+      const alignMap: Record<string, string> = {
+        'left': 'text-left',
+        'center': 'text-center',
+        'right': 'text-right',
+        'justify': 'text-justify',
+      };
+      return [alignMap[value] || ''];
+    }
+
+    // Position
+    if (property === 'position') {
+      const posMap: Record<string, string> = {
+        'relative': 'relative',
+        'absolute': 'absolute',
+        'fixed': 'fixed',
+        'sticky': 'sticky',
+      };
+      return [posMap[value] || ''];
+    }
+
+    // Overflow
+    if (property === 'overflow') {
+      const overflowMap: Record<string, string> = {
+        'hidden': 'overflow-hidden',
+        'auto': 'overflow-auto',
+        'scroll': 'overflow-scroll',
+        'visible': 'overflow-visible',
+      };
+      return [overflowMap[value] || ''];
+    }
+
+    // Cursor
+    if (property === 'cursor') {
+      return [`cursor-[${value}]`];
+    }
+
+    // Colors (use arbitrary values for now)
+    if (property === 'color' && value !== 'rgb(0, 0, 0)') {
+      return [`text-[${value}]`];
+    }
+    if (property === 'backgroundColor' && value !== 'rgba(0, 0, 0, 0)') {
+      return [`bg-[${value}]`];
+    }
+
+    return [];
+  };
+
+  // Convert HTML to React/JSX with Tailwind
   const convertHtmlToReact = (sourceElement: HTMLElement): string => {
     // Recursively process element and its children
     const processElement = (el: HTMLElement): string => {
       const tagName = el.tagName.toLowerCase();
       const computedStyle = window.getComputedStyle(el);
 
-      // Extract important style properties
+      // Collect Tailwind classes
+      const tailwindClasses: string[] = [];
       const inlineStyles: Record<string, string> = {};
 
       // SVG-specific attributes
@@ -68,20 +233,18 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         }
       }
 
-      // Colors
-      if (computedStyle.color && computedStyle.color !== 'rgb(0, 0, 0)') {
-        inlineStyles.color = computedStyle.color;
-      }
-      if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-        inlineStyles.backgroundColor = computedStyle.backgroundColor;
-      }
-
       // Typography
-      if (computedStyle.fontSize) inlineStyles.fontSize = computedStyle.fontSize;
-      if (computedStyle.fontWeight && computedStyle.fontWeight !== '400') {
-        inlineStyles.fontWeight = computedStyle.fontWeight;
+      if (computedStyle.fontSize) {
+        const classes = cssToTailwind('fontSize', computedStyle.fontSize);
+        tailwindClasses.push(...classes);
       }
-      if (computedStyle.fontFamily) inlineStyles.fontFamily = computedStyle.fontFamily;
+      if (computedStyle.fontWeight && computedStyle.fontWeight !== '400') {
+        const classes = cssToTailwind('fontWeight', computedStyle.fontWeight);
+        tailwindClasses.push(...classes);
+      }
+      if (computedStyle.fontFamily) {
+        inlineStyles.fontFamily = computedStyle.fontFamily;
+      }
       if (computedStyle.lineHeight && computedStyle.lineHeight !== 'normal') {
         inlineStyles.lineHeight = computedStyle.lineHeight;
       }
@@ -91,26 +254,37 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
       // Layout
       if (computedStyle.display && computedStyle.display !== 'inline') {
-        inlineStyles.display = computedStyle.display;
+        const classes = cssToTailwind('display', computedStyle.display);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.flexDirection && computedStyle.flexDirection !== 'row') {
-        inlineStyles.flexDirection = computedStyle.flexDirection;
+        const classes = cssToTailwind('flexDirection', computedStyle.flexDirection);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.alignItems && computedStyle.alignItems !== 'normal') {
-        inlineStyles.alignItems = computedStyle.alignItems;
+        const classes = cssToTailwind('alignItems', computedStyle.alignItems);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.justifyContent && computedStyle.justifyContent !== 'normal') {
-        inlineStyles.justifyContent = computedStyle.justifyContent;
+        const classes = cssToTailwind('justifyContent', computedStyle.justifyContent);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.gap && computedStyle.gap !== 'normal' && computedStyle.gap !== '0px') {
-        inlineStyles.gap = computedStyle.gap;
+        const classes = cssToTailwind('gap', computedStyle.gap);
+        tailwindClasses.push(...classes);
       }
 
       // Spacing
       const padding = computedStyle.padding;
-      if (padding && padding !== '0px') inlineStyles.padding = padding;
+      if (padding && padding !== '0px') {
+        const classes = cssToTailwind('padding', padding);
+        tailwindClasses.push(...classes);
+      }
       const margin = computedStyle.margin;
-      if (margin && margin !== '0px') inlineStyles.margin = margin;
+      if (margin && margin !== '0px') {
+        const classes = cssToTailwind('margin', margin);
+        tailwindClasses.push(...classes);
+      }
 
       // Borders
       if (computedStyle.borderWidth && computedStyle.borderWidth !== '0px') {
@@ -119,7 +293,18 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         if (computedStyle.borderColor) inlineStyles.borderColor = computedStyle.borderColor;
       }
       if (computedStyle.borderRadius && computedStyle.borderRadius !== '0px') {
-        inlineStyles.borderRadius = computedStyle.borderRadius;
+        const classes = cssToTailwind('borderRadius', computedStyle.borderRadius);
+        tailwindClasses.push(...classes);
+      }
+
+      // Colors
+      if (computedStyle.color && computedStyle.color !== 'rgb(0, 0, 0)') {
+        const classes = cssToTailwind('color', computedStyle.color);
+        tailwindClasses.push(...classes);
+      }
+      if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+        const classes = cssToTailwind('backgroundColor', computedStyle.backgroundColor);
+        tailwindClasses.push(...classes);
       }
 
       // Dimensions
@@ -138,18 +323,22 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
       // Position
       if (computedStyle.position && computedStyle.position !== 'static') {
-        inlineStyles.position = computedStyle.position;
+        const classes = cssToTailwind('position', computedStyle.position);
+        tailwindClasses.push(...classes);
       }
 
       // Others
       if (computedStyle.overflow && computedStyle.overflow !== 'visible') {
-        inlineStyles.overflow = computedStyle.overflow;
+        const classes = cssToTailwind('overflow', computedStyle.overflow);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.textAlign && computedStyle.textAlign !== 'start') {
-        inlineStyles.textAlign = computedStyle.textAlign;
+        const classes = cssToTailwind('textAlign', computedStyle.textAlign);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.cursor && computedStyle.cursor !== 'auto') {
-        inlineStyles.cursor = computedStyle.cursor;
+        const classes = cssToTailwind('cursor', computedStyle.cursor);
+        tailwindClasses.push(...classes);
       }
 
       // Build attributes
@@ -167,7 +356,15 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         attributes += ` ${attrName}="${attr.value}"`;
       }
 
-      // Add style attribute if we have inline styles
+      // Add className attribute if we have Tailwind classes
+      if (tailwindClasses.length > 0) {
+        const classString = tailwindClasses.filter(c => c).join(' ');
+        if (classString) {
+          attributes += ` className="${classString}"`;
+        }
+      }
+
+      // Add style attribute if we have inline styles (for things we couldn't convert to Tailwind)
       if (Object.keys(inlineStyles).length > 0) {
         const styleString = JSON.stringify(inlineStyles, null, 2)
           .replace(/"([^"]+)":/g, '$1:')
