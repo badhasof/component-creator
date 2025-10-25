@@ -182,7 +182,18 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
     // Cursor
     if (property === 'cursor') {
-      return [`cursor-[${value}]`];
+      const cursorMap: Record<string, string> = {
+        'pointer': 'cursor-pointer',
+        'default': 'cursor-default',
+        'text': 'cursor-text',
+        'wait': 'cursor-wait',
+        'move': 'cursor-move',
+        'not-allowed': 'cursor-not-allowed',
+        'help': 'cursor-help',
+        'grab': 'cursor-grab',
+        'grabbing': 'cursor-grabbing',
+      };
+      return [cursorMap[value] || `cursor-[${value}]`];
     }
 
     // Colors (use arbitrary values for now)
@@ -191,6 +202,80 @@ export function StyleInspector({ element }: StyleInspectorProps) {
     }
     if (property === 'backgroundColor' && value !== 'rgba(0, 0, 0, 0)') {
       return [`bg-[${value}]`];
+    }
+
+    // Border width
+    if (property === 'borderWidth') {
+      const borderMap: Record<string, string> = {
+        '0px': 'border-0',
+        '1px': 'border',
+        '2px': 'border-2',
+        '4px': 'border-4',
+        '8px': 'border-8',
+      };
+      return [borderMap[value] || `border-[${value}]`];
+    }
+
+    // Border style
+    if (property === 'borderStyle') {
+      const styleMap: Record<string, string> = {
+        'solid': 'border-solid',
+        'dashed': 'border-dashed',
+        'dotted': 'border-dotted',
+        'double': 'border-double',
+        'none': 'border-none',
+      };
+      return [styleMap[value] || ''];
+    }
+
+    // Border color
+    if (property === 'borderColor') {
+      return [`border-[${value}]`];
+    }
+
+    // Width
+    if (property === 'width') {
+      const widthMap: Record<string, string> = {
+        'auto': 'w-auto',
+        '100%': 'w-full',
+        '50%': 'w-1/2',
+        '33.333333%': 'w-1/3',
+        '25%': 'w-1/4',
+      };
+      return [widthMap[value] || `w-[${value}]`];
+    }
+
+    // Height
+    if (property === 'height') {
+      const heightMap: Record<string, string> = {
+        'auto': 'h-auto',
+        '100%': 'h-full',
+        '100vh': 'h-screen',
+      };
+      return [heightMap[value] || `h-[${value}]`];
+    }
+
+    // Min width
+    if (property === 'minWidth') {
+      return [`min-w-[${value}]`];
+    }
+
+    // Min height
+    if (property === 'minHeight') {
+      return [`min-h-[${value}]`];
+    }
+
+    // Line height
+    if (property === 'lineHeight') {
+      const lineHeightMap: Record<string, string> = {
+        '1': 'leading-none',
+        '1.25': 'leading-tight',
+        '1.375': 'leading-snug',
+        '1.5': 'leading-normal',
+        '1.625': 'leading-relaxed',
+        '2': 'leading-loose',
+      };
+      return [lineHeightMap[value] || `leading-[${value}]`];
     }
 
     return [];
@@ -243,10 +328,16 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         tailwindClasses.push(...classes);
       }
       if (computedStyle.fontFamily) {
+        // Keep font family as inline style since it's usually custom
         inlineStyles.fontFamily = computedStyle.fontFamily;
       }
       if (computedStyle.lineHeight && computedStyle.lineHeight !== 'normal') {
-        inlineStyles.lineHeight = computedStyle.lineHeight;
+        const classes = cssToTailwind('lineHeight', computedStyle.lineHeight);
+        if (classes.length > 0) {
+          tailwindClasses.push(...classes);
+        } else {
+          inlineStyles.lineHeight = computedStyle.lineHeight;
+        }
       }
       if (computedStyle.letterSpacing && computedStyle.letterSpacing !== 'normal') {
         inlineStyles.letterSpacing = computedStyle.letterSpacing;
@@ -288,9 +379,16 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
       // Borders
       if (computedStyle.borderWidth && computedStyle.borderWidth !== '0px') {
-        inlineStyles.borderWidth = computedStyle.borderWidth;
-        if (computedStyle.borderStyle) inlineStyles.borderStyle = computedStyle.borderStyle;
-        if (computedStyle.borderColor) inlineStyles.borderColor = computedStyle.borderColor;
+        const classes = cssToTailwind('borderWidth', computedStyle.borderWidth);
+        tailwindClasses.push(...classes);
+      }
+      if (computedStyle.borderStyle && computedStyle.borderStyle !== 'none') {
+        const classes = cssToTailwind('borderStyle', computedStyle.borderStyle);
+        tailwindClasses.push(...classes);
+      }
+      if (computedStyle.borderColor) {
+        const classes = cssToTailwind('borderColor', computedStyle.borderColor);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.borderRadius && computedStyle.borderRadius !== '0px') {
         const classes = cssToTailwind('borderRadius', computedStyle.borderRadius);
@@ -309,16 +407,20 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
       // Dimensions
       if (computedStyle.width && !computedStyle.width.includes('auto')) {
-        inlineStyles.width = computedStyle.width;
+        const classes = cssToTailwind('width', computedStyle.width);
+        tailwindClasses.push(...classes);
       }
       if (computedStyle.height && !computedStyle.height.includes('auto')) {
-        inlineStyles.height = computedStyle.height;
+        const classes = cssToTailwind('height', computedStyle.height);
+        tailwindClasses.push(...classes);
       }
-      if (computedStyle.minWidth && computedStyle.minWidth !== '0px') {
-        inlineStyles.minWidth = computedStyle.minWidth;
+      if (computedStyle.minWidth && computedStyle.minWidth !== '0px' && computedStyle.minWidth !== 'auto') {
+        const classes = cssToTailwind('minWidth', computedStyle.minWidth);
+        tailwindClasses.push(...classes);
       }
-      if (computedStyle.minHeight && computedStyle.minHeight !== '0px') {
-        inlineStyles.minHeight = computedStyle.minHeight;
+      if (computedStyle.minHeight && computedStyle.minHeight !== '0px' && computedStyle.minHeight !== 'auto') {
+        const classes = cssToTailwind('minHeight', computedStyle.minHeight);
+        tailwindClasses.push(...classes);
       }
 
       // Position
