@@ -32,6 +32,132 @@ export function StyleInspector({ element }: StyleInspectorProps) {
   const allStyles = getAllStyles();
   const htmlCode = element.outerHTML;
 
+  // Helper: Convert RGB to closest Tailwind color
+  const rgbToTailwind = (rgbString: string): string | null => {
+    const match = rgbString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return null;
+
+    const [, r, g, b] = match.map(Number);
+
+    // Tailwind color palette (simplified - common colors)
+    const colors: Record<string, [number, number, number]> = {
+      'white': [255, 255, 255],
+      'black': [0, 0, 0],
+      'gray-50': [249, 250, 251],
+      'gray-100': [243, 244, 246],
+      'gray-200': [229, 231, 235],
+      'gray-300': [209, 213, 219],
+      'gray-400': [156, 163, 175],
+      'gray-500': [107, 114, 128],
+      'gray-600': [75, 85, 99],
+      'gray-700': [55, 65, 81],
+      'gray-800': [31, 41, 55],
+      'gray-900': [17, 24, 39],
+      'red-500': [239, 68, 68],
+      'red-600': [220, 38, 38],
+      'orange-500': [249, 115, 22],
+      'amber-500': [245, 158, 11],
+      'yellow-400': [250, 204, 21],
+      'yellow-500': [234, 179, 8],
+      'lime-500': [132, 204, 22],
+      'green-500': [34, 197, 94],
+      'emerald-500': [16, 185, 129],
+      'teal-500': [20, 184, 166],
+      'cyan-500': [6, 182, 212],
+      'sky-500': [14, 165, 233],
+      'blue-500': [59, 130, 246],
+      'blue-600': [37, 99, 235],
+      'indigo-500': [99, 102, 241],
+      'violet-500': [139, 92, 246],
+      'purple-500': [168, 85, 247],
+      'fuchsia-500': [217, 70, 239],
+      'pink-500': [236, 72, 153],
+      'rose-500': [244, 63, 94],
+    };
+
+    // Find closest color
+    let closestColor = null;
+    let minDistance = Infinity;
+
+    for (const [name, [cr, cg, cb]] of Object.entries(colors)) {
+      const distance = Math.sqrt(
+        Math.pow(r - cr, 2) +
+        Math.pow(g - cg, 2) +
+        Math.pow(b - cb, 2)
+      );
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestColor = name;
+      }
+    }
+
+    // Only use Tailwind color if it's reasonably close (threshold: 50)
+    if (closestColor && minDistance < 50) {
+      return closestColor;
+    }
+
+    return null;
+  };
+
+  // Helper: Convert px value to Tailwind spacing scale
+  const pxToSpacing = (pxValue: string): string | null => {
+    const value = parseFloat(pxValue);
+
+    // Tailwind spacing scale: 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 96
+    // In px: 0, 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256, 288, 320, 384
+    const spacingMap: Record<number, string> = {
+      0: '0',
+      2: '0.5',
+      4: '1',
+      6: '1.5',
+      8: '2',
+      10: '2.5',
+      12: '3',
+      14: '3.5',
+      16: '4',
+      20: '5',
+      24: '6',
+      28: '7',
+      32: '8',
+      36: '9',
+      40: '10',
+      44: '11',
+      48: '12',
+      56: '14',
+      64: '16',
+      80: '20',
+      96: '24',
+      112: '28',
+      128: '32',
+      144: '36',
+      160: '40',
+      176: '44',
+      192: '48',
+      208: '52',
+      224: '56',
+      240: '60',
+      256: '64',
+      288: '72',
+      320: '80',
+      384: '96',
+    };
+
+    // Exact match
+    if (spacingMap[value]) {
+      return spacingMap[value];
+    }
+
+    // Find closest (within 2px tolerance)
+    for (const [px, scale] of Object.entries(spacingMap)) {
+      if (Math.abs(value - Number(px)) <= 2) {
+        return scale;
+      }
+    }
+
+    return null;
+  };
+
   // Convert CSS value to Tailwind class
   const cssToTailwind = (property: string, value: string): string[] => {
     // Font size mapping
@@ -196,12 +322,18 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       return [cursorMap[value] || `cursor-[${value}]`];
     }
 
-    // Colors (use arbitrary values for now)
+    // Colors - try to use Tailwind colors first
     if (property === 'color' && value !== 'rgb(0, 0, 0)') {
-      return [`text-[${value}]`];
+      const tailwindColor = rgbToTailwind(value);
+      return [tailwindColor ? `text-${tailwindColor}` : `text-[${value}]`];
     }
     if (property === 'backgroundColor' && value !== 'rgba(0, 0, 0, 0)') {
-      return [`bg-[${value}]`];
+      const tailwindColor = rgbToTailwind(value);
+      return [tailwindColor ? `bg-${tailwindColor}` : `bg-[${value}]`];
+    }
+    if (property === 'borderColor') {
+      const tailwindColor = rgbToTailwind(value);
+      return [tailwindColor ? `border-${tailwindColor}` : `border-[${value}]`];
     }
 
     // Border width
@@ -226,11 +358,6 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         'none': 'border-none',
       };
       return [styleMap[value] || ''];
-    }
-
-    // Border color
-    if (property === 'borderColor') {
-      return [`border-[${value}]`];
     }
 
     // Width
@@ -329,7 +456,8 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       }
       if (computedStyle.fontFamily) {
         // Keep font family as inline style since it's usually custom
-        inlineStyles.fontFamily = computedStyle.fontFamily;
+        // Remove quotes from font family to avoid escaping issues
+        inlineStyles.fontFamily = computedStyle.fontFamily.replace(/['"]/g, '');
       }
       if (computedStyle.lineHeight && computedStyle.lineHeight !== 'normal') {
         const classes = cssToTailwind('lineHeight', computedStyle.lineHeight);
@@ -365,43 +493,139 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         tailwindClasses.push(...classes);
       }
 
-      // Spacing
-      const padding = computedStyle.padding;
-      if (padding && padding !== '0px') {
-        const classes = cssToTailwind('padding', padding);
-        tailwindClasses.push(...classes);
-      }
-      const margin = computedStyle.margin;
-      if (margin && margin !== '0px') {
-        const classes = cssToTailwind('margin', margin);
-        tailwindClasses.push(...classes);
+      // Spacing - handle individual sides for better accuracy
+      const pt = computedStyle.paddingTop;
+      const pr = computedStyle.paddingRight;
+      const pb = computedStyle.paddingBottom;
+      const pl = computedStyle.paddingLeft;
+
+      // Check if all padding sides are the same
+      if (pt === pr && pr === pb && pb === pl && pt !== '0px') {
+        // All sides same - use p-{value}
+        const spacing = pxToSpacing(pt);
+        tailwindClasses.push(spacing ? `p-${spacing}` : `p-[${pt}]`);
+      } else {
+        // Different sides - use individual classes
+        if (pt && pt !== '0px') {
+          const spacing = pxToSpacing(pt);
+          tailwindClasses.push(spacing ? `pt-${spacing}` : `pt-[${pt}]`);
+        }
+        if (pr && pr !== '0px') {
+          const spacing = pxToSpacing(pr);
+          tailwindClasses.push(spacing ? `pr-${spacing}` : `pr-[${pr}]`);
+        }
+        if (pb && pb !== '0px') {
+          const spacing = pxToSpacing(pb);
+          tailwindClasses.push(spacing ? `pb-${spacing}` : `pb-[${pb}]`);
+        }
+        if (pl && pl !== '0px') {
+          const spacing = pxToSpacing(pl);
+          tailwindClasses.push(spacing ? `pl-${spacing}` : `pl-[${pl}]`);
+        }
       }
 
-      // Borders
-      if (computedStyle.borderWidth && computedStyle.borderWidth !== '0px') {
-        const classes = cssToTailwind('borderWidth', computedStyle.borderWidth);
-        tailwindClasses.push(...classes);
+      // Margin - handle individual sides
+      const mt = computedStyle.marginTop;
+      const mr = computedStyle.marginRight;
+      const mb = computedStyle.marginBottom;
+      const ml = computedStyle.marginLeft;
+
+      // Check if all margin sides are the same
+      if (mt === mr && mr === mb && mb === ml && mt !== '0px' && mt !== 'auto') {
+        // All sides same - use m-{value}
+        const spacing = pxToSpacing(mt);
+        tailwindClasses.push(spacing ? `m-${spacing}` : `m-[${mt}]`);
+      } else {
+        // Different sides - use individual classes
+        if (mt && mt !== '0px' && mt !== 'auto') {
+          const spacing = pxToSpacing(mt);
+          tailwindClasses.push(spacing ? `mt-${spacing}` : `mt-[${mt}]`);
+        }
+        if (mr && mr !== '0px' && mr !== 'auto') {
+          const spacing = pxToSpacing(mr);
+          tailwindClasses.push(spacing ? `mr-${spacing}` : `mr-[${mr}]`);
+        }
+        if (mb && mb !== '0px' && mb !== 'auto') {
+          const spacing = pxToSpacing(mb);
+          tailwindClasses.push(spacing ? `mb-${spacing}` : `mb-[${mb}]`);
+        }
+        if (ml && ml !== '0px' && ml !== 'auto') {
+          const spacing = pxToSpacing(ml);
+          tailwindClasses.push(spacing ? `ml-${spacing}` : `ml-[${ml}]`);
+        }
       }
-      if (computedStyle.borderStyle && computedStyle.borderStyle !== 'none') {
-        const classes = cssToTailwind('borderStyle', computedStyle.borderStyle);
-        tailwindClasses.push(...classes);
+
+      // Borders - check individual sides to handle complex border values
+      const borderTopWidth = computedStyle.borderTopWidth;
+      const borderRightWidth = computedStyle.borderRightWidth;
+      const borderBottomWidth = computedStyle.borderBottomWidth;
+      const borderLeftWidth = computedStyle.borderLeftWidth;
+
+      // Check if any border exists
+      const hasBorder = (borderTopWidth && borderTopWidth !== '0px') ||
+                        (borderRightWidth && borderRightWidth !== '0px') ||
+                        (borderBottomWidth && borderBottomWidth !== '0px') ||
+                        (borderLeftWidth && borderLeftWidth !== '0px');
+
+      // Check if all sides have the same border width
+      const allSidesSame = borderTopWidth === borderRightWidth &&
+                           borderRightWidth === borderBottomWidth &&
+                           borderBottomWidth === borderLeftWidth;
+
+      if (hasBorder) {
+        if (allSidesSame && borderTopWidth && borderTopWidth !== '0px') {
+          // All sides have the same border width
+          const classes = cssToTailwind('borderWidth', borderTopWidth);
+          tailwindClasses.push(...classes);
+        } else {
+          // Different border widths on different sides - use arbitrary value for now
+          if (borderTopWidth && borderTopWidth !== '0px') {
+            tailwindClasses.push(`border-t-[${borderTopWidth}]`);
+          }
+          if (borderRightWidth && borderRightWidth !== '0px') {
+            tailwindClasses.push(`border-r-[${borderRightWidth}]`);
+          }
+          if (borderBottomWidth && borderBottomWidth !== '0px') {
+            tailwindClasses.push(`border-b-[${borderBottomWidth}]`);
+          }
+          if (borderLeftWidth && borderLeftWidth !== '0px') {
+            tailwindClasses.push(`border-l-[${borderLeftWidth}]`);
+          }
+        }
+
+        // Only add border style if there's actually a border
+        if (computedStyle.borderStyle && computedStyle.borderStyle !== 'none') {
+          const classes = cssToTailwind('borderStyle', computedStyle.borderStyle);
+          tailwindClasses.push(...classes);
+        }
+
+        // Only add border color if there's actually a border
+        if (computedStyle.borderColor) {
+          const classes = cssToTailwind('borderColor', computedStyle.borderColor);
+          tailwindClasses.push(...classes);
+        }
       }
-      if (computedStyle.borderColor) {
-        const classes = cssToTailwind('borderColor', computedStyle.borderColor);
-        tailwindClasses.push(...classes);
-      }
+
+      // Border radius
       if (computedStyle.borderRadius && computedStyle.borderRadius !== '0px') {
         const classes = cssToTailwind('borderRadius', computedStyle.borderRadius);
         tailwindClasses.push(...classes);
       }
 
-      // Colors
-      if (computedStyle.color && computedStyle.color !== 'rgb(0, 0, 0)') {
-        const classes = cssToTailwind('color', computedStyle.color);
+      // Colors - be more lenient with color detection
+      // Only skip truly default colors (pure black for text, transparent for background)
+      const textColor = computedStyle.color;
+      const bgColor = computedStyle.backgroundColor;
+
+      // Include text color if it's not the default black or if element has custom styling
+      if (textColor && textColor !== 'rgb(0, 0, 0)' && textColor !== 'rgba(0, 0, 0, 1)') {
+        const classes = cssToTailwind('color', textColor);
         tailwindClasses.push(...classes);
       }
-      if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-        const classes = cssToTailwind('backgroundColor', computedStyle.backgroundColor);
+
+      // Include background color if it's not transparent
+      if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+        const classes = cssToTailwind('backgroundColor', bgColor);
         tailwindClasses.push(...classes);
       }
 
@@ -506,8 +730,9 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       // Add style attribute if we have inline styles (for things we couldn't convert to Tailwind)
       if (Object.keys(inlineStyles).length > 0) {
         const styleString = JSON.stringify(inlineStyles, null, 2)
-          .replace(/"([^"]+)":/g, '$1:')
-          .replace(/"/g, "'");
+          .replace(/"([^"]+)":/g, '$1:')  // Remove quotes from keys
+          .replace(/\\'/g, "'")  // Remove escaped single quotes
+          .replace(/"/g, "'");  // Replace double quotes with single quotes
         attributes += ` style={${styleString}}`;
       }
 
