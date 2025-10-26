@@ -32,6 +32,15 @@ export function StyleInspector({ element }: StyleInspectorProps) {
   const allStyles = getAllStyles();
   const htmlCode = element.outerHTML;
 
+  // Helper: Convert RGB to hex
+  const rgbToHex = (r: number, g: number, b: number): string => {
+    const toHex = (n: number) => {
+      const hex = n.toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+
   // Helper: Convert RGB to closest Tailwind color
   const rgbToTailwind = (rgbString: string): string | null => {
     const match = rgbString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
@@ -39,11 +48,11 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
     const [, r, g, b] = match.map(Number);
 
-    // Tailwind color palette (simplified - common colors)
+    // Expanded Tailwind color palette with more shades
     const colors: Record<string, [number, number, number]> = {
       'white': [255, 255, 255],
+      'gray-50': [249, 250, 251], // Very close to white
       'black': [0, 0, 0],
-      'gray-50': [249, 250, 251],
       'gray-100': [243, 244, 246],
       'gray-200': [229, 231, 235],
       'gray-300': [209, 213, 219],
@@ -53,26 +62,63 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       'gray-700': [55, 65, 81],
       'gray-800': [31, 41, 55],
       'gray-900': [17, 24, 39],
+      'red-400': [248, 113, 113],
       'red-500': [239, 68, 68],
       'red-600': [220, 38, 38],
+      'orange-400': [251, 146, 60],
       'orange-500': [249, 115, 22],
+      'amber-400': [251, 191, 36],
       'amber-500': [245, 158, 11],
+      'yellow-300': [253, 224, 71],
       'yellow-400': [250, 204, 21],
       'yellow-500': [234, 179, 8],
+      'lime-400': [163, 230, 53],
       'lime-500': [132, 204, 22],
+      'lime-600': [101, 163, 13],
+      'green-400': [74, 222, 128],
       'green-500': [34, 197, 94],
+      'green-600': [22, 163, 74],
+      'emerald-400': [52, 211, 153],
       'emerald-500': [16, 185, 129],
+      'emerald-600': [5, 150, 105],
+      'teal-400': [45, 212, 191],
       'teal-500': [20, 184, 166],
+      'teal-600': [13, 148, 136],
+      'cyan-400': [34, 211, 238],
       'cyan-500': [6, 182, 212],
+      'sky-400': [56, 189, 248],
       'sky-500': [14, 165, 233],
+      'blue-400': [96, 165, 250],
       'blue-500': [59, 130, 246],
       'blue-600': [37, 99, 235],
+      'indigo-400': [129, 140, 248],
       'indigo-500': [99, 102, 241],
+      'violet-400': [167, 139, 250],
       'violet-500': [139, 92, 246],
+      'purple-400': [192, 132, 252],
       'purple-500': [168, 85, 247],
+      'fuchsia-400': [232, 121, 249],
       'fuchsia-500': [217, 70, 239],
+      'pink-400': [244, 114, 182],
       'pink-500': [236, 72, 153],
+      'rose-400': [251, 113, 133],
       'rose-500': [244, 63, 94],
+      // Add some olive/muted tones
+      'stone-400': [168, 162, 158],
+      'stone-500': [120, 113, 108],
+      'stone-600': [87, 83, 78],
+      'neutral-400': [163, 163, 163],
+      'neutral-500': [115, 115, 115],
+      'zinc-400': [161, 161, 170],
+      'zinc-500': [113, 113, 122],
+      'slate-400': [148, 163, 184],
+      'slate-500': [100, 116, 139],
+      // Olive/sage greens
+      'lime-700': [77, 124, 15],
+      'lime-800': [63, 98, 18],
+      'green-700': [21, 128, 61],
+      'green-800': [22, 101, 52],
+      'emerald-700': [4, 120, 87],
     };
 
     // Find closest color
@@ -92,12 +138,22 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       }
     }
 
-    // Only use Tailwind color if it's reasonably close (threshold: 50)
-    if (closestColor && minDistance < 50) {
+    // Only use Tailwind color if it's very close (threshold: 30)
+    // This ensures we only use Tailwind colors for exact or near-exact matches
+    // Otherwise, we'll use hex which is more accurate
+    if (closestColor && minDistance < 30) {
       return closestColor;
     }
 
     return null;
+  };
+
+  // Helper: Round fractional pixel values
+  const roundPxValue = (pxValue: string): string => {
+    const value = parseFloat(pxValue);
+    // Round to nearest integer
+    const rounded = Math.round(value);
+    return `${rounded}px`;
   };
 
   // Helper: Convert px value to Tailwind spacing scale
@@ -143,14 +199,17 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       384: '96',
     };
 
+    // Round the value first
+    const rounded = Math.round(value);
+
     // Exact match
-    if (spacingMap[value]) {
-      return spacingMap[value];
+    if (spacingMap[rounded]) {
+      return spacingMap[rounded];
     }
 
     // Find closest (within 2px tolerance)
     for (const [px, scale] of Object.entries(spacingMap)) {
-      if (Math.abs(value - Number(px)) <= 2) {
+      if (Math.abs(rounded - Number(px)) <= 2) {
         return scale;
       }
     }
@@ -245,9 +304,16 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       return [justifyMap[value] || ''];
     }
 
-    // Gap (simplified - using arbitrary values)
+    // Gap
     if (property === 'gap' && value !== 'normal' && value !== '0px') {
-      return [`gap-[${value}]`];
+      // Try to map to Tailwind spacing first
+      const spacing = pxToSpacing(value);
+      if (spacing) {
+        return [`gap-${spacing}`];
+      }
+      // Round fractional px values
+      const rounded = value.includes('px') ? roundPxValue(value) : value;
+      return [`gap-[${rounded}]`];
     }
 
     // Padding/Margin (simplified)
@@ -322,18 +388,48 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       return [cursorMap[value] || `cursor-[${value}]`];
     }
 
-    // Colors - try to use Tailwind colors first
+    // Colors - try to use Tailwind colors first, fallback to hex
     if (property === 'color' && value !== 'rgb(0, 0, 0)') {
       const tailwindColor = rgbToTailwind(value);
-      return [tailwindColor ? `text-${tailwindColor}` : `text-[${value}]`];
+      if (tailwindColor) {
+        return [`text-${tailwindColor}`];
+      }
+      // Convert RGB to hex for better Tailwind arbitrary value support
+      const rgbMatch = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (rgbMatch) {
+        const [, r, g, b] = rgbMatch.map(Number);
+        const hex = rgbToHex(r, g, b);
+        return [`text-[${hex}]`];
+      }
+      return [`text-[${value}]`];
     }
     if (property === 'backgroundColor' && value !== 'rgba(0, 0, 0, 0)') {
       const tailwindColor = rgbToTailwind(value);
-      return [tailwindColor ? `bg-${tailwindColor}` : `bg-[${value}]`];
+      if (tailwindColor) {
+        return [`bg-${tailwindColor}`];
+      }
+      // Convert RGB to hex for better Tailwind arbitrary value support
+      const rgbMatch = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (rgbMatch) {
+        const [, r, g, b] = rgbMatch.map(Number);
+        const hex = rgbToHex(r, g, b);
+        return [`bg-[${hex}]`];
+      }
+      return [`bg-[${value}]`];
     }
     if (property === 'borderColor') {
       const tailwindColor = rgbToTailwind(value);
-      return [tailwindColor ? `border-${tailwindColor}` : `border-[${value}]`];
+      if (tailwindColor) {
+        return [`border-${tailwindColor}`];
+      }
+      // Convert RGB to hex for better Tailwind arbitrary value support
+      const rgbMatch = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (rgbMatch) {
+        const [, r, g, b] = rgbMatch.map(Number);
+        const hex = rgbToHex(r, g, b);
+        return [`border-[${hex}]`];
+      }
+      return [`border-[${value}]`];
     }
 
     // Border width
@@ -369,7 +465,12 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         '33.333333%': 'w-1/3',
         '25%': 'w-1/4',
       };
-      return [widthMap[value] || `w-[${value}]`];
+      if (widthMap[value]) {
+        return [widthMap[value]];
+      }
+      // Round fractional px values
+      const rounded = value.includes('px') ? roundPxValue(value) : value;
+      return [`w-[${rounded}]`];
     }
 
     // Height
@@ -379,17 +480,24 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         '100%': 'h-full',
         '100vh': 'h-screen',
       };
-      return [heightMap[value] || `h-[${value}]`];
+      if (heightMap[value]) {
+        return [heightMap[value]];
+      }
+      // Round fractional px values
+      const rounded = value.includes('px') ? roundPxValue(value) : value;
+      return [`h-[${rounded}]`];
     }
 
     // Min width
     if (property === 'minWidth') {
-      return [`min-w-[${value}]`];
+      const rounded = value.includes('px') ? roundPxValue(value) : value;
+      return [`min-w-[${rounded}]`];
     }
 
     // Min height
     if (property === 'minHeight') {
-      return [`min-h-[${value}]`];
+      const rounded = value.includes('px') ? roundPxValue(value) : value;
+      return [`min-h-[${rounded}]`];
     }
 
     // Line height
@@ -403,6 +511,56 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         '2': 'leading-loose',
       };
       return [lineHeightMap[value] || `leading-[${value}]`];
+    }
+
+    // Opacity
+    if (property === 'opacity' && value !== '1') {
+      const opacityValue = parseFloat(value) * 100;
+      const opacityMap: Record<number, string> = {
+        0: 'opacity-0',
+        5: 'opacity-5',
+        10: 'opacity-10',
+        20: 'opacity-20',
+        25: 'opacity-25',
+        30: 'opacity-30',
+        40: 'opacity-40',
+        50: 'opacity-50',
+        60: 'opacity-60',
+        70: 'opacity-70',
+        75: 'opacity-75',
+        80: 'opacity-80',
+        90: 'opacity-90',
+        95: 'opacity-95',
+        100: 'opacity-100',
+      };
+      // Find closest opacity value
+      const closest = Object.keys(opacityMap).reduce((prev, curr) =>
+        Math.abs(Number(curr) - opacityValue) < Math.abs(Number(prev) - opacityValue) ? curr : prev
+      );
+      return [opacityMap[Number(closest)]];
+    }
+
+    // Text decoration
+    if (property === 'textDecoration' || property === 'textDecorationLine') {
+      const decorationMap: Record<string, string> = {
+        'underline': 'underline',
+        'line-through': 'line-through',
+        'none': 'no-underline',
+      };
+      return [decorationMap[value] || ''];
+    }
+
+    // Z-index
+    if (property === 'zIndex' && value !== 'auto') {
+      const zIndexMap: Record<string, string> = {
+        '0': 'z-0',
+        '10': 'z-10',
+        '20': 'z-20',
+        '30': 'z-30',
+        '40': 'z-40',
+        '50': 'z-50',
+      };
+      return [zIndexMap[value] || `z-[${value}]`];
     }
 
     return [];
@@ -455,9 +613,12 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         tailwindClasses.push(...classes);
       }
       if (computedStyle.fontFamily) {
-        // Keep font family as inline style since it's usually custom
-        // Remove quotes from font family to avoid escaping issues
-        inlineStyles.fontFamily = computedStyle.fontFamily.replace(/['"]/g, '');
+        // Only include font family if it's not a generic fallback
+        const fontFamily = computedStyle.fontFamily.replace(/['"]/g, '');
+        // Skip generic sans-serif, serif, monospace as these can be set via Tailwind
+        if (fontFamily !== 'sans-serif' && fontFamily !== 'serif' && fontFamily !== 'monospace') {
+          inlineStyles.fontFamily = fontFamily;
+        }
       }
       if (computedStyle.lineHeight && computedStyle.lineHeight !== 'normal') {
         const classes = cssToTailwind('lineHeight', computedStyle.lineHeight);
@@ -617,10 +778,13 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       const textColor = computedStyle.color;
       const bgColor = computedStyle.backgroundColor;
 
-      // Include text color if it's not the default black or if element has custom styling
+      // Include text color if it's not the default black
+      // Also include white/light colors explicitly
       if (textColor && textColor !== 'rgb(0, 0, 0)' && textColor !== 'rgba(0, 0, 0, 1)') {
         const classes = cssToTailwind('color', textColor);
-        tailwindClasses.push(...classes);
+        if (classes.length > 0 && classes[0]) {
+          tailwindClasses.push(...classes);
+        }
       }
 
       // Include background color if it's not transparent
@@ -662,9 +826,53 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         const classes = cssToTailwind('textAlign', computedStyle.textAlign);
         tailwindClasses.push(...classes);
       }
-      if (computedStyle.cursor && computedStyle.cursor !== 'auto') {
-        const classes = cssToTailwind('cursor', computedStyle.cursor);
+      if (computedStyle.cursor && computedStyle.cursor !== 'auto' && computedStyle.cursor !== 'default') {
+        // Skip cursor: pointer on elements that naturally have it (links, buttons)
+        // Also skip cursor on generic divs/spans unless it's unusual
+        const skipPointerOn = ['a', 'button', 'input', 'select', 'textarea'];
+        const genericElements = ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+        const shouldSkip = (computedStyle.cursor === 'pointer' && skipPointerOn.includes(tagName)) ||
+                          (computedStyle.cursor === 'pointer' && genericElements.includes(tagName));
+
+        if (!shouldSkip) {
+          const classes = cssToTailwind('cursor', computedStyle.cursor);
+          tailwindClasses.push(...classes);
+        }
+      }
+
+      // Opacity
+      if (computedStyle.opacity && computedStyle.opacity !== '1') {
+        const classes = cssToTailwind('opacity', computedStyle.opacity);
         tailwindClasses.push(...classes);
+      }
+
+      // Text decoration - only add if it's actually decorated (not none)
+      const textDecorationLine = computedStyle.textDecorationLine || computedStyle.textDecoration;
+      if (textDecorationLine &&
+          textDecorationLine !== 'none' &&
+          textDecorationLine !== 'none solid rgb(0, 0, 0)' &&
+          !textDecorationLine.startsWith('none ')) {
+        const classes = cssToTailwind('textDecorationLine', textDecorationLine);
+        if (classes.length > 0 && classes[0] !== '') {
+          tailwindClasses.push(...classes);
+        }
+      }
+
+      // Z-index
+      if (computedStyle.zIndex && computedStyle.zIndex !== 'auto') {
+        const classes = cssToTailwind('zIndex', computedStyle.zIndex);
+        tailwindClasses.push(...classes);
+      }
+
+      // Box shadow - keep as inline style for now (complex to map to Tailwind)
+      if (computedStyle.boxShadow && computedStyle.boxShadow !== 'none') {
+        inlineStyles.boxShadow = computedStyle.boxShadow;
+      }
+
+      // Transform - keep as inline style (complex to map to Tailwind)
+      if (computedStyle.transform && computedStyle.transform !== 'none') {
+        inlineStyles.transform = computedStyle.transform;
       }
 
       // Build attributes
@@ -790,17 +998,91 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         attributes += ` style={${styleString}}`;
       }
 
-      // Process children
+      // Skip elements that shouldn't be in React components
+      const excludedTags = ['style', 'script', 'noscript', 'iframe', 'object', 'embed'];
+      if (excludedTags.includes(tagName)) {
+        return ''; // Don't include these elements
+      }
+
+      // Helper: Check if element is a simple text-only span
+      const isSimpleTextSpan = (element: HTMLElement): boolean => {
+        return element.tagName.toLowerCase() === 'span' &&
+               element.childNodes.length === 1 &&
+               element.childNodes[0].nodeType === Node.TEXT_NODE;
+      };
+
+      // Helper: Get text content from simple span
+      const getSpanText = (element: HTMLElement): string => {
+        return element.textContent || '';
+      };
+
+      // Process children with consolidation for letter-by-letter spans
       let children = '';
       if (el.childNodes.length > 0) {
-        el.childNodes.forEach(child => {
+        let i = 0;
+        while (i < el.childNodes.length) {
+          const child = el.childNodes[i];
+
           if (child.nodeType === Node.TEXT_NODE) {
             const text = child.textContent?.trim();
             if (text) children += text;
+            i++;
           } else if (child.nodeType === Node.ELEMENT_NODE) {
-            children += processElement(child as HTMLElement);
+            const childEl = child as HTMLElement;
+
+            // Check if this is a sequence of simple text spans (letter-by-letter text)
+            if (isSimpleTextSpan(childEl)) {
+              let consolidatedText = getSpanText(childEl);
+              let j = i + 1;
+
+              // Look ahead to find consecutive simple text spans with similar styling
+              while (j < el.childNodes.length) {
+                const nextChild = el.childNodes[j];
+                if (nextChild.nodeType === Node.ELEMENT_NODE) {
+                  const nextEl = nextChild as HTMLElement;
+                  if (isSimpleTextSpan(nextEl)) {
+                    consolidatedText += getSpanText(nextEl);
+                    j++;
+                  } else {
+                    break;
+                  }
+                } else {
+                  break;
+                }
+              }
+
+              // If we consolidated multiple spans (letter-by-letter text)
+              if (j > i + 1) {
+                // Get the text color from the first span to preserve styling
+                const firstSpanStyle = window.getComputedStyle(childEl);
+                const spanTextColor = firstSpanStyle.color;
+
+                // Check if the text has a specific color (not default/inherited)
+                if (spanTextColor && spanTextColor !== 'rgb(0, 0, 0)' && spanTextColor !== 'rgba(0, 0, 0, 1)') {
+                  // Wrap in a span with the color class
+                  const colorClass = cssToTailwind('color', spanTextColor);
+                  if (colorClass.length > 0 && colorClass[0]) {
+                    children += `<span className="${colorClass[0]}">${consolidatedText}</span>`;
+                  } else {
+                    children += consolidatedText;
+                  }
+                } else {
+                  children += consolidatedText;
+                }
+                i = j;
+              } else {
+                // Single span, process normally
+                children += processElement(childEl);
+                i++;
+              }
+            } else {
+              children += processElement(childEl);
+              i++;
+            }
+          } else {
+            i++;
           }
-        });
+        }
       }
 
       // Self-closing tags
