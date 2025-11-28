@@ -190,7 +190,20 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
       // Background image / gradients
       if (computedStyle.backgroundImage && computedStyle.backgroundImage !== 'none') {
-        inlineStyles.backgroundImage = computedStyle.backgroundImage;
+        // Convert relative URLs in background-image to absolute
+        let bgImage = computedStyle.backgroundImage;
+        bgImage = bgImage.replace(/url\(["']?([^"')]+)["']?\)/g, (match, url) => {
+          if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+            return match;
+          }
+          try {
+            const absoluteUrl = new URL(url, window.location.href).href;
+            return `url("${absoluteUrl}")`;
+          } catch (e) {
+            return match;
+          }
+        });
+        inlineStyles.backgroundImage = bgImage;
       }
       if (computedStyle.backgroundSize && computedStyle.backgroundSize !== 'auto' && computedStyle.backgroundSize !== 'auto auto') {
         inlineStyles.backgroundSize = computedStyle.backgroundSize;
@@ -374,6 +387,31 @@ export function StyleInspector({ element }: StyleInspectorProps) {
 
         // Convert xlink:href to xlinkHref for React
         if (attrName === 'xlink:href') attrName = 'xlinkHref';
+
+        // Convert relative URLs to absolute URLs for src, href, srcset, poster, etc.
+        const urlAttributes = ['src', 'href', 'xlinkHref', 'poster', 'data', 'action'];
+        if (urlAttributes.includes(attrName) && attrValue && !attrValue.startsWith('data:') && !attrValue.startsWith('javascript:')) {
+          try {
+            attrValue = new URL(attrValue, window.location.href).href;
+          } catch (e) {
+            // Keep original value if URL parsing fails
+          }
+        }
+
+        // Handle srcset attribute (contains multiple URLs)
+        if (attrName === 'srcset' && attrValue) {
+          attrValue = attrValue.split(',').map(entry => {
+            const parts = entry.trim().split(/\s+/);
+            if (parts[0]) {
+              try {
+                parts[0] = new URL(parts[0], window.location.href).href;
+              } catch (e) {
+                // Keep original
+              }
+            }
+            return parts.join(' ');
+          }).join(', ');
+        }
 
         // Handle attributes with special characters (quotes, braces, etc.)
         // Use JSX expression syntax for these
