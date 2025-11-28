@@ -372,7 +372,18 @@ export function StyleInspector({ element }: StyleInspectorProps) {
           if (!attrValue.trim()) continue; // Skip if no classes left
         }
 
-        attributes += ` ${attrName}="${attrValue}"`;
+        // Convert xlink:href to xlinkHref for React
+        if (attrName === 'xlink:href') attrName = 'xlinkHref';
+
+        // Handle attributes with special characters (quotes, braces, etc.)
+        // Use JSX expression syntax for these
+        if (attrValue.includes('"') || attrValue.includes('{') || attrValue.includes('}')) {
+          // Escape backticks and use template literal
+          const escaped = attrValue.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+          attributes += ` ${attrName}={\`${escaped}\`}`;
+        } else {
+          attributes += ` ${attrName}="${attrValue}"`;
+        }
       }
 
       // Add style attribute if we have inline styles
