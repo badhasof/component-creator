@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface StyleInspectorProps {
   element: HTMLElement;
 }
 
 export function StyleInspector({ element }: StyleInspectorProps) {
-  const [activeTab, setActiveTab] = useState<'styling' | 'html' | 'react' | 'code'>('styling');
-  const [codeViewTab, setCodeViewTab] = useState<'code' | 'preview'>('code');
-  const [reactViewTab, setReactViewTab] = useState<'code' | 'preview'>('code');
-  const [generatedCode, setGeneratedCode] = useState<string>('');
+  console.log('StyleInspector rendering with element:', element);
+  const [activeTab, setActiveTab] = useState<'styling' | 'html' | 'react'>('react');
+  const [reactViewTab, setReactViewTab] = useState<'code' | 'preview'>('preview');
   const [reactCode, setReactCode] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-2.5-flash-lite'>('gemini-2.5-flash');
-  const computedStyles = window.getComputedStyle(element);
+
+  let computedStyles: CSSStyleDeclaration;
+  try {
+    computedStyles = window.getComputedStyle(element);
+  } catch (e) {
+    console.error('Error getting computed styles:', e);
+    return <div style={{ padding: '20px', color: 'red' }}>Error: Could not get element styles</div>;
+  }
 
   // Extract all relevant CSS properties
   const getAllStyles = () => {
@@ -37,7 +39,21 @@ export function StyleInspector({ element }: StyleInspectorProps) {
     // Recursively process element and its children
     const processElement = (el: HTMLElement): string => {
       const tagName = el.tagName.toLowerCase();
+
+      // Temporarily remove highlight class to get accurate computed styles
+      const hadHighlight = el.classList.contains('cc-highlight-outline');
+      if (hadHighlight) {
+        el.classList.remove('cc-highlight-outline');
+        // Force a reflow to ensure computed styles reflect the class removal
+        void el.offsetHeight;
+      }
+
       const computedStyle = window.getComputedStyle(el);
+
+      // Restore highlight class after getting styles
+      if (hadHighlight) {
+        el.classList.add('cc-highlight-outline');
+      }
 
       // Extract important style properties
       const inlineStyles: Record<string, string> = {};
@@ -141,9 +157,187 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         inlineStyles.position = computedStyle.position;
       }
 
+      // Box shadow
+      if (computedStyle.boxShadow && computedStyle.boxShadow !== 'none') {
+        inlineStyles.boxShadow = computedStyle.boxShadow;
+      }
+
+      // Text decoration
+      if (computedStyle.textDecoration && computedStyle.textDecoration !== 'none solid rgb(0, 0, 0)' && computedStyle.textDecoration !== 'none') {
+        inlineStyles.textDecoration = computedStyle.textDecoration;
+      }
+      if (computedStyle.textDecorationLine && computedStyle.textDecorationLine !== 'none') {
+        inlineStyles.textDecorationLine = computedStyle.textDecorationLine;
+      }
+
+      // Opacity
+      if (computedStyle.opacity && computedStyle.opacity !== '1') {
+        inlineStyles.opacity = computedStyle.opacity;
+      }
+
+      // Transform
+      if (computedStyle.transform && computedStyle.transform !== 'none') {
+        inlineStyles.transform = computedStyle.transform;
+      }
+      if (computedStyle.transformOrigin && computedStyle.transformOrigin !== '50% 50%' && computedStyle.transformOrigin !== '50% 50% 0px') {
+        inlineStyles.transformOrigin = computedStyle.transformOrigin;
+      }
+
+      // Transition
+      if (computedStyle.transition && computedStyle.transition !== 'all 0s ease 0s' && computedStyle.transition !== 'none') {
+        inlineStyles.transition = computedStyle.transition;
+      }
+
+      // Background image / gradients
+      if (computedStyle.backgroundImage && computedStyle.backgroundImage !== 'none') {
+        inlineStyles.backgroundImage = computedStyle.backgroundImage;
+      }
+      if (computedStyle.backgroundSize && computedStyle.backgroundSize !== 'auto' && computedStyle.backgroundSize !== 'auto auto') {
+        inlineStyles.backgroundSize = computedStyle.backgroundSize;
+      }
+      if (computedStyle.backgroundPosition && computedStyle.backgroundPosition !== '0% 0%') {
+        inlineStyles.backgroundPosition = computedStyle.backgroundPosition;
+      }
+      if (computedStyle.backgroundRepeat && computedStyle.backgroundRepeat !== 'repeat') {
+        inlineStyles.backgroundRepeat = computedStyle.backgroundRepeat;
+      }
+
+      // Grid properties
+      if (computedStyle.display === 'grid' || computedStyle.display === 'inline-grid') {
+        if (computedStyle.gridTemplateColumns && computedStyle.gridTemplateColumns !== 'none') {
+          inlineStyles.gridTemplateColumns = computedStyle.gridTemplateColumns;
+        }
+        if (computedStyle.gridTemplateRows && computedStyle.gridTemplateRows !== 'none') {
+          inlineStyles.gridTemplateRows = computedStyle.gridTemplateRows;
+        }
+        if (computedStyle.gridAutoColumns && computedStyle.gridAutoColumns !== 'auto') {
+          inlineStyles.gridAutoColumns = computedStyle.gridAutoColumns;
+        }
+        if (computedStyle.gridAutoRows && computedStyle.gridAutoRows !== 'auto') {
+          inlineStyles.gridAutoRows = computedStyle.gridAutoRows;
+        }
+        if (computedStyle.gridAutoFlow && computedStyle.gridAutoFlow !== 'row') {
+          inlineStyles.gridAutoFlow = computedStyle.gridAutoFlow;
+        }
+      }
+      // Grid item properties (can be on any element)
+      if (computedStyle.gridColumn && computedStyle.gridColumn !== 'auto / auto') {
+        inlineStyles.gridColumn = computedStyle.gridColumn;
+      }
+      if (computedStyle.gridRow && computedStyle.gridRow !== 'auto / auto') {
+        inlineStyles.gridRow = computedStyle.gridRow;
+      }
+      if (computedStyle.gridArea && computedStyle.gridArea !== 'auto / auto / auto / auto') {
+        inlineStyles.gridArea = computedStyle.gridArea;
+      }
+
+      // Flex item properties
+      if (computedStyle.flexBasis && computedStyle.flexBasis !== 'auto') {
+        inlineStyles.flexBasis = computedStyle.flexBasis;
+      }
+      if (computedStyle.flexGrow && computedStyle.flexGrow !== '0') {
+        inlineStyles.flexGrow = computedStyle.flexGrow;
+      }
+      if (computedStyle.flexShrink && computedStyle.flexShrink !== '1') {
+        inlineStyles.flexShrink = computedStyle.flexShrink;
+      }
+      if (computedStyle.flexWrap && computedStyle.flexWrap !== 'nowrap') {
+        inlineStyles.flexWrap = computedStyle.flexWrap;
+      }
+      if (computedStyle.alignSelf && computedStyle.alignSelf !== 'auto') {
+        inlineStyles.alignSelf = computedStyle.alignSelf;
+      }
+      if (computedStyle.justifySelf && computedStyle.justifySelf !== 'auto') {
+        inlineStyles.justifySelf = computedStyle.justifySelf;
+      }
+      if (computedStyle.order && computedStyle.order !== '0') {
+        inlineStyles.order = computedStyle.order;
+      }
+
+      // Z-index - skip our extension's highlight z-index (2147483646)
+      if (computedStyle.zIndex && computedStyle.zIndex !== 'auto' && computedStyle.zIndex !== '2147483646') {
+        inlineStyles.zIndex = computedStyle.zIndex;
+      }
+
+      // Text styling
+      if (computedStyle.whiteSpace && computedStyle.whiteSpace !== 'normal') {
+        inlineStyles.whiteSpace = computedStyle.whiteSpace;
+      }
+      if (computedStyle.textTransform && computedStyle.textTransform !== 'none') {
+        inlineStyles.textTransform = computedStyle.textTransform;
+      }
+      if (computedStyle.textOverflow && computedStyle.textOverflow !== 'clip') {
+        inlineStyles.textOverflow = computedStyle.textOverflow;
+      }
+      if (computedStyle.wordBreak && computedStyle.wordBreak !== 'normal') {
+        inlineStyles.wordBreak = computedStyle.wordBreak;
+      }
+      if (computedStyle.textShadow && computedStyle.textShadow !== 'none') {
+        inlineStyles.textShadow = computedStyle.textShadow;
+      }
+
+      // Visibility and display
+      if (computedStyle.visibility && computedStyle.visibility !== 'visible') {
+        inlineStyles.visibility = computedStyle.visibility;
+      }
+
+      // Position offsets (only when positioned)
+      if (computedStyle.position && computedStyle.position !== 'static') {
+        if (computedStyle.top && computedStyle.top !== 'auto') {
+          inlineStyles.top = computedStyle.top;
+        }
+        if (computedStyle.right && computedStyle.right !== 'auto') {
+          inlineStyles.right = computedStyle.right;
+        }
+        if (computedStyle.bottom && computedStyle.bottom !== 'auto') {
+          inlineStyles.bottom = computedStyle.bottom;
+        }
+        if (computedStyle.left && computedStyle.left !== 'auto') {
+          inlineStyles.left = computedStyle.left;
+        }
+      }
+
+      // Max dimensions
+      if (computedStyle.maxWidth && computedStyle.maxWidth !== 'none') {
+        inlineStyles.maxWidth = computedStyle.maxWidth;
+      }
+      if (computedStyle.maxHeight && computedStyle.maxHeight !== 'none') {
+        inlineStyles.maxHeight = computedStyle.maxHeight;
+      }
+
+      // Aspect ratio
+      if (computedStyle.aspectRatio && computedStyle.aspectRatio !== 'auto') {
+        inlineStyles.aspectRatio = computedStyle.aspectRatio;
+      }
+
+      // Object fit (for images/videos)
+      if (computedStyle.objectFit && computedStyle.objectFit !== 'fill') {
+        inlineStyles.objectFit = computedStyle.objectFit;
+      }
+      if (computedStyle.objectPosition && computedStyle.objectPosition !== '50% 50%') {
+        inlineStyles.objectPosition = computedStyle.objectPosition;
+      }
+
+      // Outline - skip our extension's highlight outline (3px solid #3b82f6)
+      if (computedStyle.outlineWidth && computedStyle.outlineWidth !== '0px') {
+        const outlineColor = computedStyle.outlineColor;
+        const outlineWidth = computedStyle.outlineWidth;
+        const isExtensionOutline = outlineWidth === '3px' &&
+          (outlineColor === 'rgb(59, 130, 246)' || outlineColor === '#3b82f6');
+        if (!isExtensionOutline) {
+          inlineStyles.outline = `${outlineWidth} ${computedStyle.outlineStyle} ${outlineColor}`;
+        }
+      }
+
       // Others
       if (computedStyle.overflow && computedStyle.overflow !== 'visible') {
         inlineStyles.overflow = computedStyle.overflow;
+      }
+      if (computedStyle.overflowX && computedStyle.overflowX !== 'visible' && computedStyle.overflowX !== computedStyle.overflow) {
+        inlineStyles.overflowX = computedStyle.overflowX;
+      }
+      if (computedStyle.overflowY && computedStyle.overflowY !== 'visible' && computedStyle.overflowY !== computedStyle.overflow) {
+        inlineStyles.overflowY = computedStyle.overflowY;
       }
       if (computedStyle.textAlign && computedStyle.textAlign !== 'start') {
         inlineStyles.textAlign = computedStyle.textAlign;
@@ -151,20 +345,34 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       if (computedStyle.cursor && computedStyle.cursor !== 'auto') {
         inlineStyles.cursor = computedStyle.cursor;
       }
+      if (computedStyle.pointerEvents && computedStyle.pointerEvents !== 'auto') {
+        inlineStyles.pointerEvents = computedStyle.pointerEvents;
+      }
+      if (computedStyle.userSelect && computedStyle.userSelect !== 'auto') {
+        inlineStyles.userSelect = computedStyle.userSelect;
+      }
 
       // Build attributes
       let attributes = '';
 
-      // Copy existing attributes (except class and style)
+      // Copy existing attributes (except style, filter cc- classes from class)
       for (let i = 0; i < el.attributes.length; i++) {
         const attr = el.attributes[i];
-        if (attr.name === 'class' || attr.name === 'style') continue;
+        if (attr.name === 'style') continue;
 
         let attrName = attr.name;
+        let attrValue = attr.value;
+
         // Convert to React attribute names
         if (attrName === 'for') attrName = 'htmlFor';
+        if (attrName === 'class') {
+          attrName = 'className';
+          // Filter out cc- prefixed classes (our extension's classes)
+          attrValue = attrValue.split(' ').filter(c => !c.startsWith('cc-')).join(' ');
+          if (!attrValue.trim()) continue; // Skip if no classes left
+        }
 
-        attributes += ` ${attrName}="${attr.value}"`;
+        attributes += ` ${attrName}="${attrValue}"`;
       }
 
       // Add style attribute if we have inline styles
@@ -222,105 +430,14 @@ export default ${componentName};`;
 
   // Auto-generate React code when component mounts or element changes
   useEffect(() => {
-    const code = convertHtmlToReact(element);
-    setReactCode(code);
-  }, [element]);
-
-  // Generate code using Gemini API
-  const generateCode = async () => {
-    setIsGenerating(true);
-    setError('');
-
     try {
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: selectedModel,
-      });
-
-      const prompt = `
-You are an expert React/Next.js developer. Your task is to convert this HTML element into a React component while preserving EVERYTHING exactly as it is.
-
-## HTML Structure:
-\`\`\`html
-${htmlCode}
-\`\`\`
-
-## Computed CSS Styles:
-\`\`\`css
-${Object.entries(allStyles)
-  .map(([prop, value]) => `${prop}: ${value};`)
-  .join('\n')}
-\`\`\`
-
-## PRIMARY RULE - PRESERVE EVERYTHING:
-**DO NOT CHANGE ANYTHING FROM THE ORIGINAL:**
-- Keep ALL text content exactly as it appears (do not modify, improve, or change any text)
-- Keep ALL class names exactly as they are
-- Keep ALL attribute values exactly as they are
-- Keep ALL image sources exactly as provided
-- Keep ALL data attributes, aria labels, and other attributes unchanged
-- Keep the EXACT structure and hierarchy of elements
-- Your ONLY job is to convert HTML syntax to React/JSX syntax - nothing more
-
-## Requirements - CRITICAL:
-- Create a React functional component with TypeScript
-- **PRIORITIZE Tailwind CSS over inline styles** - use the closest Tailwind equivalent for every style
-- Only use inline styles for truly unique values that cannot be represented with Tailwind utilities
-- Use modern React best practices
-- Make text content and dynamic values into props (but keep default values identical to original)
-- Include proper TypeScript interfaces for all props
-- Add 'use client' directive if the component uses hooks or event handlers
-
-## Tailwind Styling Rules - VERY IMPORTANT:
-- **Use Tailwind classes for ALL styling whenever possible** - this is your PRIMARY goal
-- For dimensions, colors, spacing, typography: ALWAYS use the closest Tailwind utility (e.g., \`w-48\` instead of \`width: "196px"\`)
-- For layout properties (flex, grid, positioning): ALWAYS use Tailwind classes (e.g., \`flex items-center justify-center\`)
-- For borders, shadows, opacity: ALWAYS use Tailwind utilities
-- **DO NOT dump all computed styles as inline styles** - this creates bloated, unmaintainable code
-- Only add inline styles for:
-  1. Very specific pixel values that are critical to preserve exactly
-  2. Complex gradients or transforms that don't have Tailwind equivalents
-  3. CSS variables that are part of a design system
-- When you see standard values like padding/margin/width/height, use Tailwind's spacing scale (e.g., \`p-4\`, \`m-2\`, \`w-24\`)
-- For colors, use Tailwind's color palette or the closest equivalent
-- **Remember: Clean, maintainable Tailwind code is better than pixel-perfect inline bloat**
-
-## Code Quality Requirements:
-- Only use valid Tailwind utility classes (check Tailwind documentation)
-- For custom CSS variables or unique values, add them as comments at the top noting they should be in tailwind.config
-- For SVGs, always include explicit stroke and fill colors (e.g., stroke="currentColor" or stroke="#100D0D")
-- Never use invalid Tailwind classes like "justify-left" - use "justify-start" or "justify-center" instead
-- Ensure all Tailwind breakpoint prefixes are valid (sm:, md:, lg:, xl:, 2xl:)
-- Add brief comments for any custom CSS variables or font families used
-
-## Output Format:
-Return ONLY the component code wrapped in a markdown code block with the language specified (tsx, jsx, etc).
-
-Generate the complete React component:
-      `.trim();
-
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const generatedText = response.text();
-
-      // Extract code from markdown code blocks
-      const codeBlockRegex = /\`\`\`(?:jsx?|tsx?|typescript|javascript)?\n?([\s\S]*?)\`\`\`/g;
-      const matches = [];
-      let match;
-
-      while ((match = codeBlockRegex.exec(generatedText)) !== null) {
-        matches.push(match[1].trim());
-      }
-
-      const code = matches.length > 0 ? matches[0] : generatedText;
-      setGeneratedCode(code);
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate code');
-      console.error('Gemini API Error:', err);
-    } finally {
-      setIsGenerating(false);
+      const code = convertHtmlToReact(element);
+      setReactCode(code);
+    } catch (error) {
+      console.error('Error converting HTML to React:', error);
+      setReactCode('// Error generating component');
     }
-  };
+  }, [element]);
 
   const tabStyles: React.CSSProperties = {
     display: 'inline-flex',
@@ -359,6 +476,12 @@ Generate the complete React component:
         background: '#f9fafb',
       }}>
         <button
+          onClick={() => setActiveTab('react')}
+          style={activeTab === 'react' ? activeTabStyles : tabStyles}
+        >
+          React
+        </button>
+        <button
           onClick={() => setActiveTab('styling')}
           style={activeTab === 'styling' ? activeTabStyles : tabStyles}
         >
@@ -370,72 +493,14 @@ Generate the complete React component:
         >
           HTML
         </button>
-        <button
-          onClick={() => setActiveTab('react')}
-          style={activeTab === 'react' ? activeTabStyles : tabStyles}
-        >
-          React
-        </button>
-        <button
-          onClick={() => setActiveTab('code')}
-          style={activeTab === 'code' ? activeTabStyles : tabStyles}
-        >
-          Code Generation
-        </button>
       </div>
 
       {/* Tab Content */}
       <div style={{ padding: '16px', maxHeight: '400px', overflowY: 'auto' }}>
-        {activeTab === 'styling' && (
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
-              Computed Styles
-            </h3>
-            <div style={{ fontSize: '12px', fontFamily: 'monospace' }}>
-              {Object.entries(allStyles).map(([prop, value]) => (
-                <div
-                  key={prop}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    borderBottom: '1px solid #f3f4f6',
-                    padding: '4px 0',
-                  }}
-                >
-                  <span style={{ color: '#3b82f6', fontWeight: '500' }}>{prop}:</span>
-                  <span style={{ color: '#4b5563', marginLeft: '8px', wordBreak: 'break-all' }}>
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'html' && (
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
-              HTML
-            </h3>
-            <pre style={{
-              background: '#f9fafb',
-              padding: '12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              overflowX: 'auto',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
-              color: '#374151',
-            }}>
-              <code>{htmlCode}</code>
-            </pre>
-          </div>
-        )}
-
         {activeTab === 'react' && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
-              React Component (Auto-converted)
+              React Component
             </h3>
 
             <div>
@@ -530,265 +595,100 @@ Generate the complete React component:
                   overflowX: 'auto',
                   width: '100%',
                 }}>
-                  <iframe
-                    ref={(iframe) => {
-                      if (iframe && reactCode) {
-                        console.log('Setting up iframe for React preview');
-                        const handleMessage = (event: MessageEvent) => {
-                          console.log('Received message in parent:', event.data);
-                          if (event.data.type === 'SANDBOX_READY' && iframe.contentWindow) {
-                            console.log('Sandbox ready, sending React code to render');
-                            iframe.contentWindow.postMessage({
-                              type: 'RENDER_COMPONENT',
-                              code: reactCode
-                            }, '*');
-                            window.removeEventListener('message', handleMessage);
-                          }
-                        };
-                        window.addEventListener('message', handleMessage);
-                      }
-                    }}
-                    src={chrome.runtime.getURL('sandbox.html')}
-                    style={{
-                      width: '100%',
-                      minWidth: '100%',
-                      height: '250px',
-                      border: 'none',
-                      borderRadius: '4px',
-                      background: 'white',
-                      display: 'block',
-                    }}
-                    sandbox="allow-scripts"
-                    title="React Component Preview"
-                  />
+                  {(() => {
+                    try {
+                      const sandboxUrl = chrome.runtime.getURL('sandbox.html');
+                      return (
+                        <iframe
+                          ref={(iframe) => {
+                            if (iframe && reactCode) {
+                              console.log('Setting up iframe for React preview');
+                              const handleMessage = (event: MessageEvent) => {
+                                console.log('Received message in parent:', event.data);
+                                if (event.data.type === 'SANDBOX_READY' && iframe.contentWindow) {
+                                  console.log('Sandbox ready, sending React code to render');
+                                  iframe.contentWindow.postMessage({
+                                    type: 'RENDER_COMPONENT',
+                                    code: reactCode
+                                  }, '*');
+                                  window.removeEventListener('message', handleMessage);
+                                }
+                              };
+                              window.addEventListener('message', handleMessage);
+                            }
+                          }}
+                          src={sandboxUrl}
+                          style={{
+                            width: '100%',
+                            minWidth: '100%',
+                            height: '250px',
+                            border: 'none',
+                            borderRadius: '4px',
+                            background: 'white',
+                            display: 'block',
+                          }}
+                          sandbox="allow-scripts"
+                          title="React Component Preview"
+                        />
+                      );
+                    } catch (e) {
+                      console.error('Extension context error:', e);
+                      return (
+                        <div style={{ padding: '20px', color: '#6b7280', textAlign: 'center' }}>
+                          Preview unavailable. Please refresh the page and try again.
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {activeTab === 'code' && (
+        {activeTab === 'styling' && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
-              React + Tailwind Code
+              Computed Styles
             </h3>
-
-            {/* Model Selection Dropdown */}
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#374151',
-                display: 'block',
-                marginBottom: '6px'
-              }}>
-                AI Model:
-              </label>
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value as 'gemini-2.5-flash' | 'gemini-2.5-flash-lite')}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  background: 'white',
-                  cursor: 'pointer',
-                  color: '#374151',
-                }}
-              >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
-                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (Faster)</option>
-              </select>
-            </div>
-
-            {/* Generate Button */}
-            <button
-              onClick={generateCode}
-              disabled={isGenerating}
-              style={{
-                width: '100%',
-                padding: '10px 16px',
-                marginBottom: '16px',
-                background: isGenerating ? '#9ca3af' : 'linear-gradient(to right, #8b5cf6, #ec4899)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                if (!isGenerating) {
-                  e.currentTarget.style.opacity = '0.9';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              {isGenerating ? 'Generating Code...' : 'Generate Code with AI'}
-            </button>
-
-            {/* Error Display */}
-            {error && (
-              <div style={{
-                padding: '12px',
-                marginBottom: '16px',
-                background: '#fee2e2',
-                border: '1px solid #ef4444',
-                borderRadius: '6px',
-                color: '#dc2626',
-                fontSize: '12px',
-              }}>
-                {error}
-              </div>
-            )}
-
-            {/* Generated Code Display */}
-            {generatedCode ? (
-              <div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px',
-                }}>
-                  {/* Code/Preview Toggle Tabs */}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => setCodeViewTab('code')}
-                      style={{
-                        padding: '4px 12px',
-                        background: codeViewTab === 'code' ? '#3b82f6' : '#e5e7eb',
-                        color: codeViewTab === 'code' ? 'white' : '#6b7280',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      Code
-                    </button>
-                    <button
-                      onClick={() => setCodeViewTab('preview')}
-                      style={{
-                        padding: '4px 12px',
-                        background: codeViewTab === 'preview' ? '#3b82f6' : '#e5e7eb',
-                        color: codeViewTab === 'preview' ? 'white' : '#6b7280',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      Preview
-                    </button>
-                  </div>
-
-                  {/* Copy Button */}
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedCode);
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      background: '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Copy
-                  </button>
+            <div style={{ fontSize: '12px', fontFamily: 'monospace' }}>
+              {Object.entries(allStyles).map(([prop, value]) => (
+                <div
+                  key={prop}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid #f3f4f6',
+                    padding: '4px 0',
+                  }}
+                >
+                  <span style={{ color: '#3b82f6', fontWeight: '500' }}>{prop}:</span>
+                  <span style={{ color: '#4b5563', marginLeft: '8px', wordBreak: 'break-all' }}>
+                    {value}
+                  </span>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                {/* Code View */}
-                {codeViewTab === 'code' && (
-                  <pre style={{
-                    background: '#1f2937',
-                    padding: '12px',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                    overflowX: 'auto',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
-                    color: '#e5e7eb',
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                  }}>
-                    <code>{generatedCode}</code>
-                  </pre>
-                )}
-
-                {/* Preview View */}
-                {codeViewTab === 'preview' && (
-                  <div style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                    overflowX: 'auto',
-                    width: '100%',
-                  }}>
-                    <iframe
-                      ref={(iframe) => {
-                        if (iframe && generatedCode) {
-                          console.log('Setting up iframe for preview');
-                          // Wait for sandbox to be ready
-                          const handleMessage = (event: MessageEvent) => {
-                            console.log('Received message in parent:', event.data);
-                            if (event.data.type === 'SANDBOX_READY' && iframe.contentWindow) {
-                              console.log('Sandbox ready, sending code to render');
-                              // Send code to sandbox
-                              iframe.contentWindow.postMessage({
-                                type: 'RENDER_COMPONENT',
-                                code: generatedCode
-                              }, '*');
-                              window.removeEventListener('message', handleMessage);
-                            }
-                          };
-                          window.addEventListener('message', handleMessage);
-                        }
-                      }}
-                      src={chrome.runtime.getURL('sandbox.html')}
-                      style={{
-                        width: '100%',
-                        minWidth: '100%',
-                        height: '250px',
-                        border: 'none',
-                        borderRadius: '4px',
-                        background: 'white',
-                        display: 'block',
-                      }}
-                      sandbox="allow-scripts"
-                      title="Component Preview"
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{
-                background: '#f9fafb',
-                padding: '12px',
-                borderRadius: '6px',
-                fontSize: '14px',
-                color: '#6b7280',
-                textAlign: 'center',
-              }}>
-                Click the button above to generate a React component from this element
-              </div>
-            )}
+        {activeTab === 'html' && (
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
+              HTML
+            </h3>
+            <pre style={{
+              background: '#f9fafb',
+              padding: '12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              overflowX: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              color: '#374151',
+            }}>
+              <code>{htmlCode}</code>
+            </pre>
           </div>
         )}
       </div>
