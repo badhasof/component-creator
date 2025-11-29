@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { cssToTailwind } from '../lib/css-to-tailwind';
+import type { CSSProperties as TailwindCSSProperties } from '../lib/css-to-tailwind';
 
 interface StyleInspectorProps {
   element: HTMLElement;
@@ -9,6 +11,7 @@ export function StyleInspector({ element }: StyleInspectorProps) {
   const [activeTab, setActiveTab] = useState<'styling' | 'html' | 'react'>('react');
   const [reactViewTab, setReactViewTab] = useState<'code' | 'preview'>('preview');
   const [reactCode, setReactCode] = useState<string>('');
+  const [outputMode, setOutputMode] = useState<'tailwind' | 'inline'>('tailwind');
 
   let computedStyles: CSSStyleDeclaration;
   try {
@@ -424,12 +427,32 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         }
       }
 
-      // Add style attribute if we have inline styles
+      // Add styles - either as Tailwind classes or inline styles
       if (Object.keys(inlineStyles).length > 0) {
-        const styleString = JSON.stringify(inlineStyles, null, 2)
-          .replace(/"([^"]+)":/g, '$1:')
-          .replace(/"/g, "'");
-        attributes += ` style={${styleString}}`;
+        if (outputMode === 'tailwind') {
+          // Convert to Tailwind classes
+          const tailwindResult = cssToTailwind(inlineStyles as TailwindCSSProperties);
+          if (tailwindResult.className) {
+            // Check if element already has className, merge if so
+            const existingClassIndex = attributes.indexOf('className="');
+            if (existingClassIndex !== -1) {
+              // Find the end of existing className value
+              const classStart = existingClassIndex + 'className="'.length;
+              const classEnd = attributes.indexOf('"', classStart);
+              const existingClasses = attributes.slice(classStart, classEnd);
+              const mergedClasses = existingClasses + ' ' + tailwindResult.className;
+              attributes = attributes.slice(0, classStart) + mergedClasses + attributes.slice(classEnd);
+            } else {
+              attributes += ` className="${tailwindResult.className}"`;
+            }
+          }
+        } else {
+          // Use inline styles
+          const styleString = JSON.stringify(inlineStyles, null, 2)
+            .replace(/"([^"]+)":/g, '$1:')
+            .replace(/"/g, "'");
+          attributes += ` style={${styleString}}`;
+        }
       }
 
       // Process children
@@ -477,7 +500,7 @@ export default ${componentName};`;
     return wrappedCode;
   };
 
-  // Auto-generate React code when component mounts or element changes
+  // Auto-generate React code when component mounts, element changes, or output mode changes
   useEffect(() => {
     try {
       const code = convertHtmlToReact(element);
@@ -486,7 +509,7 @@ export default ${componentName};`;
       console.error('Error converting HTML to React:', error);
       setReactCode('// Error generating component');
     }
-  }, [element]);
+  }, [element, outputMode]);
 
   const tabStyles: React.CSSProperties = {
     display: 'inline-flex',
@@ -548,9 +571,59 @@ export default ${componentName};`;
       <div style={{ padding: '16px', maxHeight: '400px', overflowY: 'auto' }}>
         {activeTab === 'react' && (
           <div>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#111827' }}>
-              React Component
-            </h3>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '12px',
+            }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                React Component
+              </h3>
+
+              {/* Tailwind/Inline CSS Toggle */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#f3f4f6',
+                padding: '3px',
+                borderRadius: '6px',
+              }}>
+                <button
+                  onClick={() => setOutputMode('tailwind')}
+                  style={{
+                    padding: '4px 10px',
+                    background: outputMode === 'tailwind' ? '#3b82f6' : 'transparent',
+                    color: outputMode === 'tailwind' ? 'white' : '#6b7280',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  Tailwind
+                </button>
+                <button
+                  onClick={() => setOutputMode('inline')}
+                  style={{
+                    padding: '4px 10px',
+                    background: outputMode === 'inline' ? '#3b82f6' : 'transparent',
+                    color: outputMode === 'inline' ? 'white' : '#6b7280',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  Inline CSS
+                </button>
+              </div>
+            </div>
 
             <div>
               <div style={{
