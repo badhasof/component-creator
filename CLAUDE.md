@@ -69,3 +69,27 @@ Default/browser values are filtered out to keep generated code clean.
 - Z-index values use maximum (2147483646-2147483647) to overlay page content
 - Content script avoids highlighting its own elements (modal, tooltip, backdrop)
 - Sandbox iframe communicates via `postMessage` for secure code execution
+
+### CSS-to-Tailwind Converter
+
+Located in `src/lib/css-to-tailwind/`. Standalone module that converts CSS properties to Tailwind classes.
+
+**Testing (iterate without rebuilding extension):**
+```bash
+npx tsx src/lib/css-to-tailwind/test-harness.ts              # Run all 71 tests
+npx tsx src/lib/css-to-tailwind/test-harness.ts --custom '{"padding":"16px","backgroundColor":"rgb(59,130,246)"}'
+```
+
+**Key files:**
+- `converter.ts` - Main `cssToTailwind()` function, handles 60+ CSS properties
+- `mappings.ts` - Tailwind scale tables (colors, spacing, typography, etc.)
+- `color-utils.ts` - RGB/hex parsing, palette matching (220 colors, distance threshold 15)
+- `value-utils.ts` - Spacing/dimension parsing, shorthand decomposition
+- `test-harness.ts` - CLI test runner (excluded from browser build via tsconfig)
+
+**Conversion strategy:**
+- Exact scale match → standard class (`16px` → `p-4`)
+- No match → arbitrary value (`17px` → `p-[17px]`)
+- Colors within distance 15 → palette match, otherwise arbitrary hex
+
+**Integration:** `StyleInspector.tsx` has a Tailwind/Inline toggle. Set via `outputMode` state, defaults to `'tailwind'`.
