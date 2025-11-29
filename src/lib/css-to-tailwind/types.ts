@@ -27,7 +27,6 @@ export interface CSSProperties {
   flexShrink?: string;
   alignSelf?: string;
   justifySelf?: string;
-  order?: string;
 
   // Spacing
   padding?: string;

@@ -156,26 +156,6 @@ export function cssToTailwind(css: CSSProperties): ConversionResult {
   if (css.flexBasis) {
     add(convertFlexBasis(css.flexBasis), 'flexBasis');
   }
-  if (css.order && css.order !== '0') {
-    const orderMap: Record<string, string> = {
-      '-9999': '-order-last',
-      '9999': 'order-last',
-      '-1': '-order-1',
-      '1': 'order-1',
-      '2': 'order-2',
-      '3': 'order-3',
-      '4': 'order-4',
-      '5': 'order-5',
-      '6': 'order-6',
-      '7': 'order-7',
-      '8': 'order-8',
-      '9': 'order-9',
-      '10': 'order-10',
-      '11': 'order-11',
-      '12': 'order-12',
-    };
-    add(orderMap[css.order] || `order-[${css.order}]`, 'order');
-  }
 
   // ==========================================================================
   // SPACING

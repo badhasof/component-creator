@@ -168,9 +168,6 @@ function extractStyles(computed: Record<string, string>): CSSProperties {
   if (computed.flexBasis && computed.flexBasis !== 'auto') {
     inlineStyles.flexBasis = computed.flexBasis;
   }
-  if (computed.order && computed.order !== '0') {
-    inlineStyles.order = computed.order;
-  }
 
   // Overflow
   if (computed.overflow && computed.overflow !== 'visible') {
@@ -551,15 +548,6 @@ const testBatch3: ExtractionTestCase[] = [
       flexBasis: '200px',
     },
     expectedClasses: ['grow', 'shrink-0', 'basis-[200px]'],
-  },
-  {
-    name: 'Flex item with order',
-    description: 'Flex item with custom order',
-    computedStyles: {
-      display: 'block',
-      order: '3',
-    },
-    expectedClasses: ['order-3'],
   },
   {
     name: 'Complex padding shorthand',

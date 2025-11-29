@@ -286,9 +286,6 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       if (computedStyle.justifySelf && computedStyle.justifySelf !== 'auto') {
         inlineStyles.justifySelf = computedStyle.justifySelf;
       }
-      if (computedStyle.order && computedStyle.order !== '0') {
-        inlineStyles.order = computedStyle.order;
-      }
 
       // Z-index - skip our extension's highlight z-index (2147483646)
       if (computedStyle.zIndex && computedStyle.zIndex !== 'auto' && computedStyle.zIndex !== '2147483646') {
@@ -478,13 +475,47 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       // Process children
       let children = '';
       if (el.childNodes.length > 0) {
+        // Separate text nodes from element nodes
+        const textNodes: ChildNode[] = [];
+        const elementNodes: HTMLElement[] = [];
+
         el.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE) {
-            const text = child.textContent?.trim();
-            if (text) children += text;
+            textNodes.push(child);
           } else if (child.nodeType === Node.ELEMENT_NODE) {
-            children += processElement(child as HTMLElement);
+            elementNodes.push(child as HTMLElement);
           }
+        });
+
+        // Sort element nodes by visual position (top-to-bottom, left-to-right)
+        if (elementNodes.length > 1) {
+          elementNodes.sort((a, b) => {
+            const rectA = a.getBoundingClientRect();
+            const rectB = b.getBoundingClientRect();
+
+            // Use a threshold to determine if elements are on the same row
+            const ROW_THRESHOLD = 20; // pixels
+            const topDiff = rectA.top - rectB.top;
+
+            // If elements are on the same row (within threshold), sort by left position
+            if (Math.abs(topDiff) <= ROW_THRESHOLD) {
+              return rectA.left - rectB.left;
+            }
+
+            // Otherwise, sort by top position
+            return topDiff;
+          });
+        }
+
+        // Process text nodes first (maintain their original order)
+        textNodes.forEach(child => {
+          const text = child.textContent?.trim();
+          if (text) children += text;
+        });
+
+        // Process element nodes in visual order
+        elementNodes.forEach(child => {
+          children += processElement(child);
         });
       }
 
