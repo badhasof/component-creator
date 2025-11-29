@@ -514,6 +514,115 @@ const testCases: TestCase[] = [
   },
 
   // ---------------------------------------------------------------------------
+  // ARBITRARY VALUE ESCAPING (spaces → underscores)
+  // ---------------------------------------------------------------------------
+  {
+    name: 'Grid columns with spaces',
+    category: 'arbitrary-escaping',
+    input: { gridTemplateColumns: '49px 49px 49px' },
+    expectedClasses: ['grid-cols-[49px_49px_49px]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Grid columns 12-column layout',
+    category: 'arbitrary-escaping',
+    input: { gridTemplateColumns: '1fr 1fr 1fr 1fr' },
+    expectedClasses: ['grid-cols-[1fr_1fr_1fr_1fr]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Grid rows with spaces',
+    category: 'arbitrary-escaping',
+    input: { gridTemplateRows: '100px 200px 100px' },
+    expectedClasses: ['grid-rows-[100px_200px_100px]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Grid column span',
+    category: 'arbitrary-escaping',
+    input: { gridColumn: 'span 6' },
+    expectedClasses: ['col-[span_6]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Grid column start/end',
+    category: 'arbitrary-escaping',
+    input: { gridColumn: '1 / span 12' },
+    expectedClasses: ['col-[1_/_span_12]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Grid row span',
+    category: 'arbitrary-escaping',
+    input: { gridRow: 'span 2' },
+    expectedClasses: ['row-[span_2]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Border radius 4-value shorthand',
+    category: 'arbitrary-escaping',
+    input: { borderRadius: '16px 16px 0px 0px' },
+    expectedClasses: ['rounded-[16px_16px_0px_0px]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Border radius 2-value shorthand',
+    category: 'arbitrary-escaping',
+    input: { borderRadius: '8px 0px' },
+    expectedClasses: ['rounded-[8px_0px]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Gap two values (row col)',
+    category: 'arbitrary-escaping',
+    input: { gap: '40px 64px' },
+    expectedClasses: ['gap-[40px_64px]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Gap with normal keyword',
+    category: 'arbitrary-escaping',
+    input: { gap: 'normal 64px' },
+    expectedClasses: ['gap-[normal_64px]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Complex transform with spaces',
+    category: 'arbitrary-escaping',
+    input: { transform: 'matrix(1, 0, 0, 1, 0, 0)' },
+    expectedClasses: ['[transform:matrix(1,_0,_0,_1,_0,_0)]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Box shadow with spaces',
+    category: 'arbitrary-escaping',
+    input: { boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)' },
+    expectedClasses: ['shadow-[0px_4px_6px_rgba(0,_0,_0,_0.1)]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Object position with space',
+    category: 'arbitrary-escaping',
+    input: { objectPosition: '50% 25%' },
+    expectedClasses: ['object-[50%_25%]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Background position arbitrary',
+    category: 'arbitrary-escaping',
+    input: { backgroundPosition: '10px 20px' },
+    expectedClasses: ['bg-[position:10px_20px]'],
+    expectedArbitraryMax: 1,
+  },
+  {
+    name: 'Text shadow with spaces',
+    category: 'arbitrary-escaping',
+    input: { textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)' },
+    expectedClasses: ['[text-shadow:2px_2px_4px_rgba(0,_0,_0,_0.5)]'],
+    expectedArbitraryMax: 1,
+  },
+
+  // ---------------------------------------------------------------------------
   // COMPLEX / REAL-WORLD
   // ---------------------------------------------------------------------------
   {

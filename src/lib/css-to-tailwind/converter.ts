@@ -518,12 +518,16 @@ export function cssToTailwind(css: CSSProperties): ConversionResult {
     add(widthMap[css.strokeWidth] || `stroke-[${css.strokeWidth}]`, 'strokeWidth');
   }
 
-  // Count arbitrary values
-  const arbitraryCount = classes.filter(c => c.includes('[')).length;
+  // Escape spaces in arbitrary values (Tailwind requires underscores inside [...])
+  const sanitizedClasses = classes.map(c =>
+    c.replace(/\[([^\]]+)\]/g, (_, v) => `[${v.replace(/\s+/g, '_')}]`)
+  );
+
+  const arbitraryCount = sanitizedClasses.filter(c => c.includes('[')).length;
 
   return {
-    classes,
-    className: classes.join(' '),
+    classes: sanitizedClasses,
+    className: sanitizedClasses.join(' '),
     unconverted,
     arbitraryCount,
   };

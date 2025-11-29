@@ -109,7 +109,16 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       }
 
       // Layout
-      if (computedStyle.display && computedStyle.display !== 'inline') {
+      // Detect if element should be grid based on grid-specific properties
+      // Only infer grid when display is 'block' (common media query case)
+      // Don't infer for inline-block, flex, etc. which are explicit display values
+      const hasGridTemplate = (computedStyle.gridTemplateColumns && computedStyle.gridTemplateColumns !== 'none') ||
+                              (computedStyle.gridTemplateRows && computedStyle.gridTemplateRows !== 'none');
+
+      if (hasGridTemplate && computedStyle.display === 'block') {
+        // Force grid display if grid template properties are set but display shows block
+        inlineStyles.display = 'grid';
+      } else if (computedStyle.display && computedStyle.display !== 'inline') {
         inlineStyles.display = computedStyle.display;
       }
       if (computedStyle.flexDirection && computedStyle.flexDirection !== 'row') {
@@ -121,8 +130,14 @@ export function StyleInspector({ element }: StyleInspectorProps) {
       if (computedStyle.justifyContent && computedStyle.justifyContent !== 'normal') {
         inlineStyles.justifyContent = computedStyle.justifyContent;
       }
+      // Only extract gap when display is flex or grid (gap has no effect on block elements)
+      // Use the inferred display value (which may be forced to 'grid' if grid templates exist)
+      const effectiveDisplay = inlineStyles.display || computedStyle.display;
       if (computedStyle.gap && computedStyle.gap !== 'normal' && computedStyle.gap !== '0px') {
-        inlineStyles.gap = computedStyle.gap;
+        if (effectiveDisplay === 'flex' || effectiveDisplay === 'inline-flex' ||
+            effectiveDisplay === 'grid' || effectiveDisplay === 'inline-grid') {
+          inlineStyles.gap = computedStyle.gap;
+        }
       }
 
       // Spacing
@@ -218,8 +233,13 @@ export function StyleInspector({ element }: StyleInspectorProps) {
         inlineStyles.backgroundRepeat = computedStyle.backgroundRepeat;
       }
 
-      // Grid properties
-      if (computedStyle.display === 'grid' || computedStyle.display === 'inline-grid') {
+      // Grid properties - extract if display is grid OR if inferred grid (block + grid templates)
+      const isGridContainer = computedStyle.display === 'grid' || computedStyle.display === 'inline-grid' ||
+                              (computedStyle.display === 'block' && (
+                                (computedStyle.gridTemplateColumns && computedStyle.gridTemplateColumns !== 'none') ||
+                                (computedStyle.gridTemplateRows && computedStyle.gridTemplateRows !== 'none')
+                              ));
+      if (isGridContainer) {
         if (computedStyle.gridTemplateColumns && computedStyle.gridTemplateColumns !== 'none') {
           inlineStyles.gridTemplateColumns = computedStyle.gridTemplateColumns;
         }

@@ -29,5 +29,5 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["src"],
-  "exclude": ["src/lib/css-to-tailwind/test-harness.ts"]
+  "exclude": ["src/lib/css-to-tailwind/test-harness.ts", "src/lib/css-to-tailwind/style-extraction-tests.ts"]
 }
