@@ -48,10 +48,12 @@
           window.parent.postMessage({ type: 'SANDBOX_READY' }, '*');
         }
 
-        // Listen for component code
+        // Listen for rendering messages
         window.addEventListener('message', function(event) {
-          if (event.data.type === 'RENDER_COMPONENT') {
-            renderComponent(event.data.code);
+          if (event.data.type === 'RENDER_HTML') {
+            renderHTML(event.data.html, event.data.css);
+          } else if (event.data.type === 'RENDER_REACT') {
+            renderReactComponent(event.data.code, event.data.css);
           }
         });
       } catch (error) {
@@ -61,13 +63,62 @@
       }
     }
 
-    function renderComponent(code) {
+    function renderHTML(html, css) {
       try {
-        console.log('Rendering component with code:', code.substring(0, 100) + '...');
+        console.log('Rendering HTML:', html.substring(0, 100) + '...');
+        console.log('With CSS:', css ? css.substring(0, 100) + '...' : 'none');
 
         // Clear previous renders
         const root = document.getElementById('root');
         root.innerHTML = '';
+
+        // Remove existing custom styles
+        const existingStyle = document.getElementById('custom-styles');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+
+        // Inject custom CSS if provided
+        if (css) {
+          const styleEl = document.createElement('style');
+          styleEl.id = 'custom-styles';
+          styleEl.textContent = css;
+          document.head.appendChild(styleEl);
+        }
+
+        // Render HTML
+        root.innerHTML = html;
+
+        console.log('HTML rendered successfully');
+      } catch (error) {
+        console.error('HTML render error:', error);
+        document.getElementById('root').innerHTML =
+          '<div style="color: red; padding: 10px;">Error: ' + error.message + '</div>';
+      }
+    }
+
+    function renderReactComponent(code, css) {
+      try {
+        console.log('Rendering React component with code:', code.substring(0, 100) + '...');
+        console.log('With CSS:', css ? css.substring(0, 100) + '...' : 'none');
+
+        // Clear previous renders
+        const root = document.getElementById('root');
+        root.innerHTML = '';
+
+        // Remove existing custom styles
+        const existingStyle = document.getElementById('custom-styles');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+
+        // Inject custom CSS if provided
+        if (css) {
+          const styleEl = document.createElement('style');
+          styleEl.id = 'custom-styles';
+          styleEl.textContent = css;
+          document.head.appendChild(styleEl);
+        }
 
         // Remove import statements since React is globally available
         let processedCode = code
